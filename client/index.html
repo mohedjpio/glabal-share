@@ -262,21 +262,84 @@
 
 
       <!-- ── Video overlay (shown during video call) ── -->
-      <div id="video-overlay" class="video-overlay hidden">
-        <video id="video-remote" class="video-remote" autoplay playsinline></video>
-        <video id="video-local"  class="video-local"  autoplay playsinline muted></video>
-      </div>
+      <!-- ══════════════════════════════════════════
+           CALL SCREEN — fullscreen overlay
+      ══════════════════════════════════════════ -->
+      <div id="call-screen" class="call-screen hidden">
 
-      <!-- ── Call bar ── -->
+        <!-- Remote video (full bg) -->
+        <video id="video-remote" class="cs-remote" autoplay playsinline></video>
+
+        <!-- No-video avatar (shown when remote has no cam) -->
+        <div id="cs-avatar" class="cs-avatar hidden">
+          <div class="cs-avatar-ring"></div>
+          <div class="cs-avatar-icon">
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="8" r="5"/><path d="M3 21v-1a9 9 0 0 1 18 0v1"/></svg>
+          </div>
+          <p id="cs-avatar-name" class="cs-avatar-name"></p>
+        </div>
+
+        <!-- Top bar: caller info + timer -->
+        <div class="cs-topbar">
+          <div class="cs-peer-info">
+            <span id="cs-peer-name" class="cs-peer-name"></span>
+            <span id="cs-call-status" class="cs-call-subtitle"></span>
+          </div>
+          <div id="cs-timer" class="cs-timer hidden">00:00</div>
+        </div>
+
+        <!-- Ring screen (shown while calling / incoming) -->
+        <div id="cs-ring-screen" class="cs-ring-screen hidden">
+          <div class="cs-ring-avatar">
+            <div class="cs-ring-pulse cs-ring-pulse-1"></div>
+            <div class="cs-ring-pulse cs-ring-pulse-2"></div>
+            <div class="cs-ring-pulse cs-ring-pulse-3"></div>
+            <div class="cs-ring-icon">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="12" cy="8" r="5"/><path d="M3 21v-1a9 9 0 0 1 18 0v1"/></svg>
+            </div>
+          </div>
+          <p id="cs-ring-name" class="cs-ring-name"></p>
+          <p id="cs-ring-status" class="cs-ring-status"></p>
+          <!-- Incoming call actions -->
+          <div id="cs-ring-actions" class="cs-ring-actions hidden">
+            <button id="call-btn-reject" class="cs-action-btn cs-btn-decline">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18.36 6.64A9 9 0 0 1 20.77 15H3.23a9 9 0 0 1 2.41-8.36l-.76-.77A10.43 10.43 0 0 0 2 14a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1 10.43 10.43 0 0 0-2.88-7.13z"/></svg>
+              <span>Decline</span>
+            </button>
+            <button id="call-btn-accept" class="cs-action-btn cs-btn-accept">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.36 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.11 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91A16 16 0 0 0 12 16l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 20 17z"/></svg>
+              <span>Accept</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Local PiP video -->
+        <video id="video-local" class="cs-local" autoplay playsinline muted></video>
+
+        <!-- Active call controls dock -->
+        <div id="cs-controls" class="cs-controls hidden">
+          <button id="call-btn-mute" class="cs-ctrl-btn" data-label="Mute" title="Mute">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
+          <button id="call-btn-cam" class="cs-ctrl-btn" data-label="Camera" title="Toggle camera">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+          </button>
+          <button id="call-btn-end" class="cs-ctrl-btn cs-ctrl-end" data-label="End" title="End call">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M18.36 6.64A9 9 0 0 1 20.77 15H3.23a9 9 0 0 1 2.41-8.36l-.76-.77A10.43 10.43 0 0 0 2 14a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1 10.43 10.43 0 0 0-2.88-7.13z"/></svg>
+          </button>
+        </div>
+
+      </div><!-- /call-screen -->
+
+      <!-- ── Minimal call bar (idle state only) ── -->
       <div id="call-bar" class="call-bar">
         <div class="call-info">
           <div class="call-icon">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.36 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.11 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91A16 16 0 0 0 12 16l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 20 17z"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.36 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.11 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91A16 16 0 0 0 12 16l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 20 17z"/></svg>
           </div>
-          <span id="call-status" class="call-status"></span>
+          <span class="call-bar-label">Start a call</span>
         </div>
         <div class="call-controls">
-          <!-- Idle: audio + video call buttons -->
           <button id="call-btn-audio" class="call-btn call-btn-start" title="Voice call">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.36 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.11 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91A16 16 0 0 0 12 16l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 20 17z"/></svg>
             <span class="call-btn-label">Voice</span>
@@ -284,28 +347,6 @@
           <button id="call-btn-video" class="call-btn call-btn-vid" title="Video call">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
             <span class="call-btn-label">Video</span>
-          </button>
-          <!-- Incoming: accept/decline -->
-          <button id="call-btn-accept" class="call-btn call-btn-accept hidden" title="Accept">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.36 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.11 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91A16 16 0 0 0 12 16l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 20 17z"/></svg>
-            <span class="call-btn-label">Accept</span>
-          </button>
-          <button id="call-btn-reject" class="call-btn call-btn-reject hidden" title="Decline">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.36 6.64A9 9 0 0 1 20.77 15H3.23a9 9 0 0 1 2.41-8.36l-.76-.77A10.43 10.43 0 0 0 2 14a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1 10.43 10.43 0 0 0-2.88-7.13z"/></svg>
-            <span class="call-btn-label">Decline</span>
-          </button>
-          <!-- Active: mute + cam + end -->
-          <button id="call-btn-mute" class="call-btn call-btn-mute hidden" title="Mute">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-            <span class="call-btn-label">Mute</span>
-          </button>
-          <button id="call-btn-cam" class="call-btn call-btn-cam hidden" title="Toggle camera">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-            <span class="call-btn-label">Cam off</span>
-          </button>
-          <button id="call-btn-end" class="call-btn call-btn-end hidden" title="End call">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.36 6.64A9 9 0 0 1 20.77 15H3.23a9 9 0 0 1 2.41-8.36l-.76-.77A10.43 10.43 0 0 0 2 14a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1 10.43 10.43 0 0 0-2.88-7.13z"/></svg>
-            <span class="call-btn-label">End</span>
           </button>
         </div>
       </div>

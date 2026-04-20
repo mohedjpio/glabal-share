@@ -1,38 +1,37 @@
 'use strict';
 window.CallModule = (() => {
 
-  // ── State ──────────────────────────────────────────────────────────────────
-  let _callType    = 'audio';  // 'audio' | 'video'
-  let _state       = 'idle';   // idle | ringing_out | ringing_in | active
-  let _localStream = null;
-  let _remoteStreams= {};       // peerId → MediaStream
-  let _muted       = false;
-  let _camOff      = false;
-  let _callTimer   = null;
-  let _callSecs    = 0;
-  let _callee      = null;
-  let _caller      = null;
-  let _ringIv      = null;
-  let _ringCtx     = null;
+  /* ── State ── */
+  let _callType   = 'audio';
+  let _state      = 'idle';
+  let _local      = null;      // MediaStream (mic/cam)
+  let _remotes    = {};        // peerId → MediaStream
+  let _muted      = false;
+  let _camOff     = false;
+  let _timer      = null;
+  let _secs       = 0;
+  let _callee     = null;
+  let _caller     = null;
+  let _ringIv     = null;
+  let _ringCtx    = null;
+  let _controlsHideTimer = null;
 
   const $ = id => document.getElementById(id);
 
-  // ── Permission check ───────────────────────────────────────────────────────
+  /* ── Secure context check ── */
   function _isSecure() {
     return location.protocol === 'https:' ||
-           location.hostname === 'localhost' ||
-           location.hostname === '127.0.0.1' ||
+           ['localhost','127.0.0.1'].includes(location.hostname) ||
            location.hostname.endsWith('.local');
   }
 
+  /* ── Get media with helpful errors ── */
   async function _getMedia(video) {
     if (!_isSecure()) {
-      UI.toast('Calls require HTTPS. Deploy to Railway/Render or use localhost.', 'error');
-      return null;
+      UI.toast('Calls require HTTPS. Deploy online or use localhost.', 'error'); return null;
     }
     if (!navigator.mediaDevices?.getUserMedia) {
-      UI.toast('Your browser does not support media access.', 'error');
-      return null;
+      UI.toast('Your browser does not support media access.', 'error'); return null;
     }
     try {
       return await navigator.mediaDevices.getUserMedia({
@@ -40,127 +39,172 @@ window.CallModule = (() => {
         video: video ? { width:{ideal:1280}, height:{ideal:720}, facingMode:'user' } : false,
       });
     } catch (e) {
-      if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
-        UI.toast('Permission denied. Allow mic' + (video ? '/camera' : '') + ' in browser settings.', 'error');
-      } else if (e.name === 'NotFoundError') {
-        UI.toast('No ' + (video ? 'camera/microphone' : 'microphone') + ' found.', 'error');
-      } else if (e.name === 'NotReadableError') {
-        UI.toast('Mic/camera already in use by another app.', 'error');
-      } else {
-        UI.toast('Media error: ' + e.message, 'error');
-      }
+      const msgs = {
+        NotAllowedError:      `Allow ${video?'camera & ':''}microphone in browser settings.`,
+        PermissionDeniedError:`Allow ${video?'camera & ':''}microphone in browser settings.`,
+        NotFoundError:        `No ${video?'camera/':''}microphone found on this device.`,
+        NotReadableError:     'Mic/camera is in use by another application.',
+      };
+      UI.toast(msgs[e.name] || 'Media error: ' + e.message, 'error');
       return null;
     }
   }
 
-  // ── UI ─────────────────────────────────────────────────────────────────────
+  /* ══════════════════════════════════════════════════════════
+     UI STATE MACHINE
+  ══════════════════════════════════════════════════════════ */
+  function _peerName(id) {
+    return (window._getPeerName && id && window._getPeerName(id)) || 'Peer';
+  }
+
   function _setUI(state) {
     _state = state;
-    const bar = $('call-bar');
-    if (!bar) return;
+    const screen = $('call-screen');
+    const bar    = $('call-bar');
+    if (!screen || !bar) return;
 
-    const isIdle     = state === 'idle';
-    const isRingIn   = state === 'ringing_in';
-    const isRingOut  = state === 'ringing_out';
-    const isActive   = state === 'active';
+    const isIdle    = state === 'idle';
+    const isOut     = state === 'ringing_out';
+    const isIn      = state === 'ringing_in';
+    const isActive  = state === 'active';
+    const isCall    = !isIdle;
 
-    $('call-btn-audio')?.classList.toggle('hidden', !isIdle);
-    $('call-btn-video')?.classList.toggle('hidden', !isIdle);
-    $('call-btn-accept')?.classList.toggle('hidden', !isRingIn);
-    $('call-btn-reject')?.classList.toggle('hidden', !isRingIn);
-    $('call-btn-mute')?.classList.toggle('hidden', !isActive);
-    $('call-btn-cam')?.classList.toggle('hidden', !(isActive && _callType==='video'));
-    $('call-btn-end')?.classList.toggle('hidden', isIdle || isRingIn);
+    /* Show/hide fullscreen call screen */
+    screen.classList.toggle('hidden', isIdle);
+    /* Hide idle call bar when in call */
+    bar.style.display = isIdle ? '' : 'none';
 
-    const s = $('call-status');
-    if (s) {
-      if (isIdle)    s.textContent = '';
-      if (isRingOut) s.textContent = 'Calling…';
-      if (isRingIn)  s.textContent = `${_callerName()} is calling…`;
-      if (isActive)  s.textContent = '00:00';
+    /* Remote video / avatar */
+    const remote  = $('video-remote');
+    const avatar  = $('cs-avatar');
+    const hasVideo = isActive && _callType === 'video' && remote?.srcObject?.getVideoTracks().length > 0;
+    if (remote) remote.style.display  = hasVideo ? 'block' : 'none';
+    if (avatar) avatar.classList.toggle('hidden', hasVideo);
+
+    /* Ring screen */
+    const ring = $('cs-ring-screen');
+    if (ring) ring.classList.toggle('hidden', !(isOut || isIn));
+
+    /* Controls dock */
+    const ctrl = $('cs-controls');
+    if (ctrl) ctrl.classList.toggle('hidden', !isActive);
+
+    /* Timer */
+    const timer = $('cs-timer');
+    if (timer) timer.classList.toggle('hidden', !isActive);
+
+    /* Top bar — peer name + subtitle */
+    const peerNameEl = $('cs-peer-name');
+    const subtitle   = $('cs-call-status');
+    if (isOut || isIn) {
+      const name = isOut ? _peerName(_callee) : _peerName(_caller);
+      if (peerNameEl) peerNameEl.textContent = name;
+      if (subtitle)   subtitle.textContent   = isOut ? 'Calling…' : 'Incoming call';
+      /* Avatar name */
+      const an = $('cs-avatar-name'); if (an) an.textContent = name;
+      /* Ring screen */
+      const rn = $('cs-ring-name');   if (rn) rn.textContent = name;
+      const rs = $('cs-ring-status'); if (rs) rs.textContent = isOut ? 'Calling…' : (_callType==='video'?'Video call':'Voice call');
+      /* Incoming actions */
+      $('cs-ring-actions')?.classList.toggle('hidden', !isIn);
+    }
+    if (isActive) {
+      const name = _peerName(_callee || _caller);
+      if (peerNameEl) peerNameEl.textContent = name;
+      if (subtitle)   subtitle.textContent   = _callType === 'video' ? 'Video call' : 'Voice call';
+      if (avatar) { const an = $('cs-avatar-name'); if (an) an.textContent = name; }
     }
 
-    bar.classList.toggle('call-active',  isActive);
-    bar.classList.toggle('call-ringing', isRingIn || isRingOut);
-
-    // Show/hide video overlay
-    const overlay = $('video-overlay');
-    if (overlay) overlay.classList.toggle('hidden', !(isActive && _callType==='video'));
+    /* PiP local video */
+    const pip = $('video-local');
+    if (pip) pip.style.display = (isActive && _callType === 'video') ? '' : 'none';
   }
 
-  function _callerName() {
-    return (window._getPeerName && _caller && window._getPeerName(_caller)) || 'Peer';
+  /* ── Show/hide controls on tap (video mode) ── */
+  function _setupTapToReveal() {
+    const screen = $('call-screen');
+    if (!screen) return;
+    screen.addEventListener('click', () => {
+      if (_state !== 'active') return;
+      const ctrl = $('cs-controls');
+      const top  = document.querySelector('.cs-topbar');
+      if (!ctrl) return;
+      ctrl.style.opacity = '1'; ctrl.style.pointerEvents = 'auto';
+      if (top) { top.style.opacity = '1'; top.style.pointerEvents = 'auto'; }
+      clearTimeout(_controlsHideTimer);
+      if (_callType === 'video') {
+        _controlsHideTimer = setTimeout(() => {
+          ctrl.style.opacity = '0'; ctrl.style.pointerEvents = 'none';
+          if (top) { top.style.opacity = '0'; top.style.pointerEvents = 'none'; }
+        }, 4000);
+      }
+    });
   }
 
-  // ── Timer ──────────────────────────────────────────────────────────────────
+  /* ── Timer ── */
   function _startTimer() {
-    _callSecs = 0;
-    _callTimer = setInterval(() => {
-      _callSecs++;
-      const m = String(Math.floor(_callSecs/60)).padStart(2,'0');
-      const s = String(_callSecs%60).padStart(2,'0');
-      const el = $('call-status');
-      if (el) el.textContent = `${m}:${s}`;
+    _secs = 0; $('cs-timer').textContent = '00:00';
+    _timer = setInterval(() => {
+      _secs++;
+      const m = String(Math.floor(_secs/60)).padStart(2,'0');
+      const s = String(_secs%60).padStart(2,'0');
+      const el = $('cs-timer'); if (el) el.textContent = `${m}:${s}`;
     }, 1000);
   }
-  function _stopTimer() { clearInterval(_callTimer); _callTimer=null; _callSecs=0; }
+  function _stopTimer() { clearInterval(_timer); _timer = null; _secs = 0; }
 
-  // ── Track management ───────────────────────────────────────────────────────
+  /* ── Track management ── */
   function _addLocalTracks(peerId) {
-    if (!_localStream) return;
+    if (!_local) return;
     const peers = peerId ? [peerId] : RTCManager.connectedPeers();
     for (const pid of peers) {
       const pc = RTCManager._pcs[pid];
       if (!pc) continue;
-      pc.getSenders()
-        .filter(s => s.track?.kind === 'audio' || s.track?.kind === 'video')
+      pc.getSenders().filter(s => s.track?.kind==='audio'||s.track?.kind==='video')
         .forEach(s => { try { pc.removeTrack(s); } catch(_) {} });
-      _localStream.getTracks().forEach(t => pc.addTrack(t, _localStream));
+      _local.getTracks().forEach(t => pc.addTrack(t, _local));
     }
   }
 
-  // Called from app.js on RTCManager 'track' event
   function onRemoteTrack(event, fromPeerId) {
     const track = event.track;
-    if (!_remoteStreams[fromPeerId]) _remoteStreams[fromPeerId] = new MediaStream();
-    _remoteStreams[fromPeerId].addTrack(track);
+    if (!_remotes[fromPeerId]) _remotes[fromPeerId] = new MediaStream();
+    _remotes[fromPeerId].addTrack(track);
 
     if (track.kind === 'audio') {
-      // Attach to audio element
       let el = document.querySelector(`audio[data-peer="${fromPeerId}"]`);
-      if (!el) { el = document.createElement('audio'); el.autoplay=true; el.playsInline=true; el.setAttribute('data-peer', fromPeerId); document.body.appendChild(el); }
-      el.srcObject = _remoteStreams[fromPeerId];
+      if (!el) {
+        el = document.createElement('audio');
+        el.autoplay = true; el.playsInline = true;
+        el.setAttribute('data-peer', fromPeerId);
+        document.body.appendChild(el);
+      }
+      el.srcObject = _remotes[fromPeerId];
     }
-
     if (track.kind === 'video') {
-      // Attach to remote video element in overlay
       const el = $('video-remote');
       if (el) {
         if (!el.srcObject) el.srcObject = new MediaStream();
         el.srcObject.addTrack(track);
-        el.play().catch(()=>{});
+        el.style.display = 'block';
+        $('cs-avatar')?.classList.add('hidden');
+        el.play().catch(() => {});
       }
     }
-
-    track.onended = () => _remoteStreams[fromPeerId]?.removeTrack(track);
+    track.onended = () => _remotes[fromPeerId]?.removeTrack(track);
   }
 
-  // ── Local video preview ────────────────────────────────────────────────────
-  function _showLocalVideo() {
+  function _showLocal() {
     const el = $('video-local');
-    if (el && _localStream) {
-      el.srcObject = _localStream;
-      el.muted = true;   // don't echo own audio
-      el.play().catch(()=>{});
-    }
+    if (el && _local) { el.srcObject = _local; el.muted = true; el.play().catch(()=>{}); }
   }
 
-  // ── Signaling ──────────────────────────────────────────────────────────────
-  function _sig(payload, toPeerId) {
-    SignalingSocket.send({ type:'call-signal', payload, to: toPeerId || undefined });
+  /* ── Signaling ── */
+  function _sig(payload, to) {
+    SignalingSocket.send({ type:'call-signal', payload, to: to||undefined });
   }
 
-  async function _renegotiateAll() {
+  async function _renegotiate() {
     const peers = _callee ? [_callee] : RTCManager.connectedPeers();
     for (const pid of peers) {
       const pc = RTCManager._pcs[pid];
@@ -169,60 +213,58 @@ window.CallModule = (() => {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         SignalingSocket.send({ type:'offer', payload:offer, to:pid });
-      } catch(e) { console.warn('[call] renegotiate failed', e); }
+      } catch(e) { console.warn('[call] renegotiate:', e); }
     }
   }
 
-  // ── Start call ─────────────────────────────────────────────────────────────
+  /* ── Start call ── */
   async function startCall(type, toPeerId) {
     if (_state !== 'idle') { UI.toast('Already in a call', 'error'); return; }
     _callType = type || 'audio';
 
     const stream = await _getMedia(_callType === 'video');
     if (!stream) return;
-    _localStream = stream;
-
-    if (_callType === 'video') _showLocalVideo();
-
+    _local  = stream;
     _callee = toPeerId || null;
+
+    if (_callType === 'video') _showLocal();
     _setUI('ringing_out');
     _sig({ action:'ring', callType:_callType }, toPeerId);
-    UI.toast(_callType === 'video' ? 'Video calling…' : 'Calling…');
-    setTimeout(() => { if (_state==='ringing_out') hangup('no_answer'); }, 45000);
+    _playRing(true);
+    setTimeout(() => { if (_state === 'ringing_out') hangup('no_answer'); }, 45000);
   }
 
-  // ── Accept ─────────────────────────────────────────────────────────────────
+  /* ── Accept ── */
   async function acceptCall() {
     if (_state !== 'ringing_in') return;
 
     const stream = await _getMedia(_callType === 'video');
     if (!stream) {
       _sig({ action:'reject', reason:'mic_denied' }, _caller);
-      _setUI('idle'); return;
+      _cleanup(); _setUI('idle'); return;
     }
-    _localStream = stream;
-    if (_callType === 'video') _showLocalVideo();
+    _local = stream;
+    if (_callType === 'video') _showLocal();
 
     _addLocalTracks(_caller);
-    await _renegotiateAll();
+    await _renegotiate();
     _sig({ action:'accept', callType:_callType }, _caller);
     _setUI('active');
     _startTimer();
     _playRing(false);
+    _revealControls();
     UI.toast('Call connected');
   }
 
-  // ── Hang up ────────────────────────────────────────────────────────────────
+  /* ── Hang up ── */
   function hangup(reason) {
     if (_state === 'idle') return;
     const wasActive = _state === 'active';
-    const target = _callee || _caller;
-    _sig({ action:'end', reason:reason||'hangup' }, target||undefined);
-    _cleanup();
-    _setUI('idle');
-    if (wasActive)               UI.toast('Call ended');
-    else if (reason==='no_answer')  UI.toast('No answer');
-    else if (reason==='rejected')   UI.toast('Call declined');
+    _sig({ action:'end', reason:reason||'hangup' }, _callee||_caller||undefined);
+    _cleanup(); _setUI('idle');
+    if (wasActive)             UI.toast('Call ended');
+    else if (reason==='no_answer') UI.toast('No answer');
+    else if (reason==='rejected')  UI.toast('Call declined');
   }
 
   function rejectCall() {
@@ -231,76 +273,84 @@ window.CallModule = (() => {
     _cleanup(); _setUI('idle');
   }
 
-  // ── Controls ───────────────────────────────────────────────────────────────
+  /* ── Controls ── */
   function toggleMute() {
-    if (!_localStream) return;
+    if (!_local) return;
     _muted = !_muted;
-    _localStream.getAudioTracks().forEach(t => { t.enabled = !_muted; });
+    _local.getAudioTracks().forEach(t => { t.enabled = !_muted; });
     const btn = $('call-btn-mute');
     if (btn) {
       btn.classList.toggle('muted', _muted);
-      btn.querySelector('.call-btn-label').textContent = _muted ? 'Unmute' : 'Mute';
+      btn.dataset.label = _muted ? 'Unmute' : 'Mute';
+      btn.title = _muted ? 'Unmute' : 'Mute';
     }
     UI.toast(_muted ? 'Muted' : 'Unmuted');
   }
 
   function toggleCamera() {
-    if (!_localStream) return;
+    if (!_local) return;
     _camOff = !_camOff;
-    _localStream.getVideoTracks().forEach(t => { t.enabled = !_camOff; });
+    _local.getVideoTracks().forEach(t => { t.enabled = !_camOff; });
     const btn = $('call-btn-cam');
     if (btn) {
       btn.classList.toggle('cam-off', _camOff);
-      btn.querySelector('.call-btn-label').textContent = _camOff ? 'Cam on' : 'Cam off';
+      btn.dataset.label = _camOff ? 'Cam on' : 'Camera';
+      btn.title = _camOff ? 'Camera on' : 'Camera off';
     }
     UI.toast(_camOff ? 'Camera off' : 'Camera on');
   }
 
-  // ── Cleanup ────────────────────────────────────────────────────────────────
+  function _revealControls() {
+    const ctrl = $('cs-controls');
+    const top  = document.querySelector('.cs-topbar');
+    if (!ctrl) return;
+    ctrl.style.opacity = '1'; ctrl.style.pointerEvents = 'auto';
+    if (top) { top.style.opacity = '1'; top.style.pointerEvents = 'auto'; }
+    if (_callType === 'video') {
+      clearTimeout(_controlsHideTimer);
+      _controlsHideTimer = setTimeout(() => {
+        ctrl.style.opacity = '0'; ctrl.style.pointerEvents = 'none';
+        if (top) { top.style.opacity = '0'; top.style.pointerEvents = 'none'; }
+      }, 5000);
+    }
+  }
+
+  /* ── Cleanup ── */
   function _cleanup() {
     _stopTimer(); _playRing(false);
-    _localStream?.getTracks().forEach(t => t.stop());
-    _localStream = null; _muted = false; _camOff = false;
+    clearTimeout(_controlsHideTimer);
+    _local?.getTracks().forEach(t => t.stop());
+    _local = null; _muted = false; _camOff = false;
 
-    // Clear video elements
-    const lv = $('video-local');   if (lv)  { lv.srcObject=null; }
-    const rv = $('video-remote');  if (rv)  { rv.srcObject=null; }
+    const lv = $('video-local');  if (lv)  { lv.srcObject = null; }
+    const rv = $('video-remote'); if (rv)  { rv.srcObject = null; rv.style.display = 'none'; }
+    document.querySelectorAll('audio[data-peer]').forEach(a => { a.srcObject = null; a.remove(); });
+    _remotes = {};
 
-    // Remove audio elements
-    document.querySelectorAll('audio[data-peer]').forEach(a => { a.srcObject=null; a.remove(); });
-    _remoteStreams = {};
-
-    // Remove media senders from all PCs
     for (const pc of Object.values(RTCManager._pcs)) {
-      pc.getSenders()
-        .filter(s => s.track?.kind==='audio' || s.track?.kind==='video')
+      pc.getSenders().filter(s => s.track?.kind==='audio'||s.track?.kind==='video')
         .forEach(s => { try { pc.removeTrack(s); } catch(_) {} });
     }
     _callee = null; _caller = null;
   }
 
-  // ── Handle incoming signal ─────────────────────────────────────────────────
+  /* ── Handle incoming signal ── */
   function handleSignal(msg, fromPeerId) {
     const { action, callType } = msg;
 
     if (action === 'ring') {
       if (_state !== 'idle') { _sig({ action:'reject', reason:'busy' }, fromPeerId); return; }
-      _caller   = fromPeerId;
-      _callType = callType || 'audio';
-      _setUI('ringing_in');
-      _playRing(true);
-      return;
+      _caller = fromPeerId; _callType = callType || 'audio';
+      _setUI('ringing_in'); _playRing(true); return;
     }
     if (action === 'accept') {
       if (_state !== 'ringing_out') return;
       _addLocalTracks(fromPeerId);
-      _renegotiateAll();
-      _setUI('active'); _startTimer(); _playRing(false);
-      UI.toast('Call connected');
-      return;
+      _renegotiate();
+      _setUI('active'); _startTimer(); _playRing(false); _revealControls();
+      UI.toast('Call connected'); return;
     }
     if (action === 'reject') {
-      if (_state === 'idle') return;
       _cleanup(); _setUI('idle'); _playRing(false);
       UI.toast('Call declined', 'error'); return;
     }
@@ -313,7 +363,7 @@ window.CallModule = (() => {
     }
   }
 
-  // ── Ring tone ──────────────────────────────────────────────────────────────
+  /* ── Ring tone ── */
   function _playRing(on) {
     clearInterval(_ringIv); _ringIv = null;
     if (_ringCtx) { try { _ringCtx.close(); } catch(_) {} _ringCtx = null; }
@@ -325,17 +375,17 @@ window.CallModule = (() => {
         const osc  = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'sine'; osc.frequency.value = 480;
-        gain.gain.setValueAtTime(0.25, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+        gain.gain.setValueAtTime(0.22, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
         osc.connect(gain); gain.connect(ctx.destination);
-        osc.start(); osc.stop(ctx.currentTime + 0.6);
-      } catch(_) {}
+        osc.start(); osc.stop(ctx.currentTime + 0.7);
+      } catch (_) {}
     }
     beep();
-    _ringIv = setInterval(beep, 1800);
+    _ringIv = setInterval(beep, 2000);
   }
 
-  // ── Init ───────────────────────────────────────────────────────────────────
+  /* ── Init ── */
   function init() {
     $('call-btn-audio')?.addEventListener('click',  () => startCall('audio'));
     $('call-btn-video')?.addEventListener('click',  () => startCall('video'));
@@ -345,6 +395,12 @@ window.CallModule = (() => {
     $('call-btn-mute')?.addEventListener('click',   () => toggleMute());
     $('call-btn-cam')?.addEventListener('click',    () => toggleCamera());
     RTCManager.on('track', (event, fromPeerId) => onRemoteTrack(event, fromPeerId));
+    _setupTapToReveal();
+    // Initially hide controls transition for smooth reveal
+    const ctrl = $('cs-controls');
+    if (ctrl) { ctrl.style.transition = 'opacity .3s'; }
+    const top = document.querySelector('.cs-topbar');
+    if (top) { top.style.transition = 'opacity .3s'; }
   }
 
   return { init, startCall, hangup, handleSignal, onRemoteTrack };
