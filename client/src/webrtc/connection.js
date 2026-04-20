@@ -1,105 +1,128 @@
-// src/webrtc/connection.js — RTCPeerConnection wrapper
+'use strict';
+// RTCManager — mesh P2P + Group, data channels + voice call audio tracks
 
 window.RTCManager = (() => {
-  let pc = null;
-  let iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
-  const _callbacks = {};
-  // Queue ICE candidates that arrive before remote description is set
-  const _pendingCandidates = [];
+  let _iceServers = [{ urls:'stun:stun.l.google.com:19302' }];
+  let _myPeerId   = null;
+  let _mode       = 'p2p';
+  const _cbs      = {};
+  const _pcs      = {};     // peerId → RTCPeerConnection  (exposed for call.js)
+  const _pending  = {};     // peerId → pending ICE candidates
 
-  function on(event, fn) { _callbacks[event] = fn; }
-  function emit(event, ...args) { if (_callbacks[event]) _callbacks[event](...args); }
+  function on(ev, fn)     { _cbs[ev] = fn; }
+  function emit(ev, ...a) { if (_cbs[ev]) _cbs[ev](...a); }
 
-  function init(peerId, servers) {
-    if (servers && servers.length) iceServers = servers;
-    _createConnection();
+  function init(myPeerId, servers, mode) {
+    _myPeerId = myPeerId;
+    _mode     = mode || 'p2p';
+    if (servers && servers.length) _iceServers = servers;
+    Object.values(_pcs).forEach(pc => { try { pc.close(); } catch(_) {} });
+    for (const k in _pcs)    delete _pcs[k];
+    for (const k in _pending) delete _pending[k];
   }
 
-  function _createConnection() {
-    if (pc) { try { pc.close(); } catch(_) {} }
-    _pendingCandidates.length = 0;
+  function _getOrCreate(remotePeerId) {
+    if (_pcs[remotePeerId]) return _pcs[remotePeerId];
 
-    pc = new RTCPeerConnection({ iceServers });
+    const pc = new RTCPeerConnection({ iceServers: _iceServers });
+    _pcs[remotePeerId]     = pc;
+    _pending[remotePeerId] = [];
 
     pc.onicecandidate = ({ candidate }) => {
-      if (candidate) SignalingSocket.send({ type: 'ice-candidate', payload: candidate });
+      if (candidate) SignalingSocket.send({ type:'ice-candidate', payload:candidate, to:remotePeerId });
     };
 
-    pc.onconnectionstatechange = () => {
-      console.log('[rtc] state:', pc.connectionState);
-      emit('statechange', pc.connectionState);
-      if (pc.connectionState === 'connected')                             emit('connected');
-      if (['disconnected','failed','closed'].includes(pc.connectionState)) emit('disconnected');
+    const checkConn = () => {
+      const s = pc.connectionState || pc.iceConnectionState;
+      if (s==='connected'||s==='completed')                        emit('peer_connected',    remotePeerId);
+      if (s==='disconnected'||s==='failed'||s==='closed')          emit('peer_disconnected', remotePeerId);
     };
+    pc.onconnectionstatechange    = checkConn;
+    pc.oniceconnectionstatechange = checkConn;
 
-    // BUG FIX: also listen to iceConnectionState for Safari compatibility
-    pc.oniceconnectionstatechange = () => {
-      if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
-        emit('connected');
-      }
-    };
+    pc.ondatachannel = (e) => emit('channel', e.channel, remotePeerId);
 
-    pc.ondatachannel = (e) => {
-      console.log('[rtc] received channel:', e.channel.label);
-      emit('channel', e.channel);
-    };
+    // ── Audio tracks (voice call) ──────────────────────────────────────────
+    pc.ontrack = (e) => emit('track', e, remotePeerId);
+
+    return pc;
   }
 
-  async function createOffer() {
+  async function createOffer(remotePeerId) {
+    const pc = _getOrCreate(remotePeerId);
+    ['chat','file','clipboard'].forEach(label => {
+      const ch = pc.createDataChannel(label, { ordered:true });
+      emit('channel', ch, remotePeerId);
+    });
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    SignalingSocket.send({ type: 'offer', payload: offer });
+    SignalingSocket.send({ type:'offer', payload:offer, to:remotePeerId });
   }
 
-  async function handleOffer(offer) {
-    // BUG FIX: guard against wrong signaling state
+  async function handleOffer(offer, fromPeerId) {
+    const pc = _getOrCreate(fromPeerId);
     if (pc.signalingState !== 'stable') {
-      console.warn('[rtc] handleOffer called in state:', pc.signalingState);
-      return;
+      // Glare — roll back and retry
+      try {
+        await pc.setLocalDescription({ type:'rollback' });
+      } catch(_) { return; }
     }
     await pc.setRemoteDescription(new RTCSessionDescription(offer));
-    // Flush queued candidates
-    for (const c of _pendingCandidates) {
+    for (const c of _pending[fromPeerId]||[]) {
       try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch(_) {}
     }
-    _pendingCandidates.length = 0;
+    _pending[fromPeerId] = [];
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    SignalingSocket.send({ type: 'answer', payload: answer });
+    SignalingSocket.send({ type:'answer', payload:answer, to:fromPeerId });
   }
 
-  async function handleAnswer(answer) {
-    if (pc.signalingState !== 'have-local-offer') return;
+  async function handleAnswer(answer, fromPeerId) {
+    const pc = _pcs[fromPeerId];
+    if (!pc || pc.signalingState !== 'have-local-offer') return;
     await pc.setRemoteDescription(new RTCSessionDescription(answer));
-    // Flush queued candidates
-    for (const c of _pendingCandidates) {
+    for (const c of _pending[fromPeerId]||[]) {
       try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch(_) {}
     }
-    _pendingCandidates.length = 0;
+    _pending[fromPeerId] = [];
   }
 
-  async function handleIceCandidate(candidate) {
-    // BUG FIX: queue candidates if remote description not set yet
-    if (!pc.remoteDescription) {
-      _pendingCandidates.push(candidate);
-      return;
+  async function handleIceCandidate(candidate, fromPeerId) {
+    const pc = _pcs[fromPeerId];
+    if (!pc || !pc.remoteDescription) {
+      (_pending[fromPeerId] = _pending[fromPeerId]||[]).push(candidate); return;
     }
-    try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); }
-    catch (e) { console.warn('[rtc] ICE candidate error:', e.message); }
+    try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch(_) {}
   }
 
-  function createChannel(label, options = {}) {
-    return pc.createDataChannel(label, { ordered: true, ...options });
+  function closePeer(peerId) {
+    const pc = _pcs[peerId];
+    if (pc) { try { pc.close(); } catch(_) {} delete _pcs[peerId]; }
+    delete _pending[peerId];
   }
 
-  function close() {
-    if (pc) { try { pc.close(); } catch(_) {} pc = null; }
-    _pendingCandidates.length = 0;
+  function closeAll() { Object.keys(_pcs).forEach(closePeer); }
+
+  function connectedPeers() { return Object.keys(_pcs); }
+
+  const P2P_ID = '__p2p__';
+  function initP2P(myPeerId, servers) { init(myPeerId, servers, 'p2p'); }
+  function createP2POffer()           { return createOffer(P2P_ID); }
+  function handleP2POffer(offer)      { return handleOffer(offer, P2P_ID); }
+  function handleP2PAnswer(answer)    { return handleAnswer(answer, P2P_ID); }
+  function handleP2PIce(c)            { return handleIceCandidate(c, P2P_ID); }
+  function createChannel(label) {
+    return _getOrCreate(P2P_ID).createDataChannel(label, { ordered:true });
   }
 
   return {
-    on, init, createOffer, createChannel,
-    handleOffer, handleAnswer, handleIceCandidate, close,
-    get state() { return pc ? pc.connectionState : 'closed'; },
+    on, init, initP2P,
+    createOffer, handleOffer, handleAnswer, handleIceCandidate,
+    createP2POffer, handleP2POffer, handleP2PAnswer, handleP2PIce,
+    createChannel, closePeer, closeAll, connectedPeers,
+    P2P_ID,
+    _pcs,   // exposed so call.js can add tracks directly
+    get mode()  { return _mode; },
+    get state() { const pc=_pcs[P2P_ID]; return pc?pc.connectionState:'closed'; },
   };
 })();
