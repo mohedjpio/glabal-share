@@ -1,6 +1,6 @@
 'use strict';
 (async () => {
-  const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/signal`;
+  const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/signal`;
   let _mode      = 'p2p';
   let _myPeerId  = null;
   let _isInit    = false;
@@ -8,9 +8,8 @@
   let _peerNames = {};
   let _myName    = 'You';
 
-  // Expose getters for call.js
-  window._getMode      = () => _mode;
-  window._getPeerName  = (id) => _peerNames[id] || 'Peer';
+  window._getMode     = () => _mode;
+  window._getPeerName = (id) => _peerNames[id] || 'Peer';
 
   UI.initTabs();
 
@@ -21,72 +20,81 @@
   window.addEventListener('online',  updateNetMode);
   window.addEventListener('offline', updateNetMode);
 
-  // ── Signaling ─────────────────────────────────────────────────────────────
+  // ── Signaling ──────────────────────────────────────────────────────────────
 
   SignalingSocket.on('joined', async (msg) => {
     _myPeerId = msg.peerId;
     _mode     = msg.mode || 'p2p';
     RTCManager.init(msg.peerId, msg.iceServers, _mode);
-    console.log(`[app] joined room ${msg.roomId} mode=${_mode} peers=${msg.peers?.length}`);
+    console.log(`[app] joined room=${msg.roomId} mode=${_mode} existingPeers=${msg.peers?.length}`);
+
     if (_isInit) {
-      for (const p of (msg.peers||[])) {
+      // Initiator: send offer to every peer already in the room
+      for (const p of (msg.peers || [])) {
         _peerNames[p.id] = p.name;
         await RTCManager.createOffer(p.id);
       }
     }
+    // Non-initiator: wait for offers from the initiator — nothing to do here
   });
 
   SignalingSocket.on('peer_joined', async (msg) => {
-    _peerNames[msg.peerId] = msg.name || `Peer ${Object.keys(_peerNames).length+1}`;
-    UI.setPeerStatus(`${_peerNames[msg.peerId]} joined…`);
+    _peerNames[msg.peerId] = msg.name || `Peer ${Object.keys(_peerNames).length + 1}`;
+    UI.setPeerStatus(`${_peerNames[msg.peerId]} joining…`);
     UI.updatePeerList(_peerNames);
-    if (_isInit) await RTCManager.createOffer(msg.peerId);
+    if (_isInit) {
+      // Initiator always creates the offer toward new joiners
+      await RTCManager.createOffer(msg.peerId);
+    }
   });
 
-  SignalingSocket.on('offer',         (msg) => { _peerNames[msg.from] = _peerNames[msg.from]||'Peer'; RTCManager.handleOffer(msg.payload, msg.from); });
+  SignalingSocket.on('offer', (msg) => {
+    _peerNames[msg.from] = _peerNames[msg.from] || 'Peer';
+    RTCManager.handleOffer(msg.payload, msg.from);
+  });
   SignalingSocket.on('answer',        (msg) => RTCManager.handleAnswer(msg.payload, msg.from));
   SignalingSocket.on('ice-candidate', (msg) => RTCManager.handleIceCandidate(msg.payload, msg.from));
-
-  // ── Call signal relay ─────────────────────────────────────────────────────
-  SignalingSocket.on('call-signal', (msg) => {
-    CallModule.handleSignal(msg.payload, msg.from);
-  });
+  SignalingSocket.on('call-signal',   (msg) => CallModule.handleSignal(msg.payload, msg.from));
 
   SignalingSocket.on('peer_left', (msg) => {
     const name = _peerNames[msg.peerId] || 'A peer';
     RTCManager.closePeer(msg.peerId);
     delete _peerNames[msg.peerId];
-    _connCount = Math.max(0, _connCount-1);
+    _connCount = Math.max(0, _connCount - 1);
     UI.updatePeerList(_peerNames);
     UI.updateConnCount(_connCount);
     ChatModule.appendSystem(`${name} left the room.`);
     UI.toast(`${name} disconnected`, 'error');
-    if (_mode==='p2p' && _connCount===0) {
+    if (_mode === 'p2p' && _connCount === 0) {
       CallModule.hangup('peer_left');
       Channels.reset();
       UI.showScreen('connect-screen');
     }
   });
 
-  SignalingSocket.on('error', (msg) => UI.toast(msg.message||'Server error','error'));
+  SignalingSocket.on('error', (msg) => UI.toast(msg.message || 'Server error', 'error'));
 
   // ── WebRTC events ─────────────────────────────────────────────────────────
 
-  RTCManager.on('channel', (ch, fromPeerId) => Channels.receive(ch, fromPeerId));
+  RTCManager.on('channel', (ch, fromPeerId) => {
+    console.log(`[app] registering channel label=${ch.label} peerId=${fromPeerId.slice(0,8)}`);
+    Channels.register(ch, fromPeerId);
+  });
 
-  // Audio tracks for call
   RTCManager.on('track', (event, fromPeerId) => CallModule.onRemoteTrack(event, fromPeerId));
 
   RTCManager.on('peer_connected', (peerId) => {
     _connCount++;
     const name = _peerNames[peerId] || 'Peer';
+    console.log(`[app] peer_connected peerId=${peerId.slice(0,8)} name=${name} total=${_connCount}`);
+    console.log(`[app] open channels:`, Channels.debug());
     UI.updateConnCount(_connCount);
     UI.updatePeerList(_peerNames);
-    if (_connCount===1) {
+    if (_connCount === 1) {
       UI.showScreen('app-screen');
-      UI.toast(_mode==='group' ? `${name} joined the group` : 'Connected — P2P link active');
-      ChatModule.appendSystem(_mode==='group'
-        ? `${name} joined. Group has ${_connCount+1} members.`
+      UI.toast(_mode === 'group' ? `${name} joined the group` : 'Connected — secure P2P');
+      ChatModule.appendSystem(_mode === 'group'
+        ? `${name} joined. Group has ${_connCount + 1} members.`
         : 'Connected. Start chatting!');
     } else {
       UI.toast(`${name} joined`);
@@ -94,53 +102,66 @@
     }
   });
 
-  RTCManager.on('peer_disconnected', (_peerId) => { /* handled by peer_left */ });
+  RTCManager.on('peer_disconnected', (_pid) => { /* handled via peer_left */ });
 
   // ── Create room ───────────────────────────────────────────────────────────
 
   document.getElementById('btn-create').addEventListener('click', async () => {
-    _isInit = true; _connCount = 0;
-    _myName = document.getElementById('my-name-input')?.value.trim() || 'Host';
+    _isInit    = true;
+    _connCount = 0;
+    _myName    = document.getElementById('my-name-input')?.value.trim() || 'Host';
+
     const res = await fetch('/api/room', {
-      method:'POST', headers:{'content-type':'application/json'},
-      body:JSON.stringify({ mode:_mode }),
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body:    JSON.stringify({ mode: _mode }),
     });
     const { roomId } = await res.json();
+
     await QRModule.generate(roomId, _mode);
-    UI.setPeerStatus(_mode==='group' ? 'Waiting for members…' : 'Waiting for peer to scan…');
+    UI.setPeerStatus(_mode === 'group' ? 'Waiting for members…' : 'Waiting for peer to scan…');
+
     SignalingSocket.connect(WS_URL, () => {
-      SignalingSocket.send({ type:'join', roomId, mode:_mode, name:_myName });
+      SignalingSocket.send({ type: 'join', roomId, mode: _mode, name: _myName });
     });
   });
 
   // ── Join room ─────────────────────────────────────────────────────────────
 
-  function joinRoom(id) {
-    _isInit = false; _connCount = 0;
-    _myName = document.getElementById('my-name-input')?.value.trim() || 'Guest';
-    let roomId = id.trim();
-    try { const u=new URL(roomId); roomId=u.searchParams.get('room')||roomId; } catch(_){}
-    if (!roomId) { UI.toast('Enter a room URL or ID','error'); return; }
+  function joinRoom(rawId) {
+    _isInit    = false;
+    _connCount = 0;
+    _myName    = document.getElementById('my-name-input')?.value.trim() || 'Guest';
+
+    let roomId = (rawId || '').trim();
+    // Strip URL wrapper if someone pasted a full link
     try {
-      const u=new URL(id.trim());
-      const m=u.searchParams.get('mode');
-      if (m==='group'||m==='p2p') _mode=m;
-    } catch(_){}
+      const u = new URL(roomId);
+      const m = u.searchParams.get('mode');
+      if (m === 'group' || m === 'p2p') _mode = m;
+      roomId = u.searchParams.get('room') || roomId;
+    } catch (_) {}
+
+    if (!roomId) { UI.toast('Enter a room URL or ID', 'error'); return; }
+
     UI.setPeerStatus('Connecting…');
     SignalingSocket.connect(WS_URL, () => {
-      SignalingSocket.send({ type:'join', roomId, name:_myName });
+      SignalingSocket.send({ type: 'join', roomId, name: _myName });
     });
   }
 
-  document.getElementById('btn-join').addEventListener('click', () => joinRoom(document.getElementById('room-input').value));
-  document.getElementById('room-input').addEventListener('keydown', e => { if(e.key==='Enter') joinRoom(document.getElementById('room-input').value); });
+  document.getElementById('btn-join').addEventListener('click', () =>
+    joinRoom(document.getElementById('room-input').value));
+  document.getElementById('room-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') joinRoom(document.getElementById('room-input').value);
+  });
 
   // ── Disconnect ────────────────────────────────────────────────────────────
 
   function doDisconnect() {
     _connCount = 0;
     CallModule.hangup('disconnect');
-    SignalingSocket.send({ type:'leave' });
+    SignalingSocket.send({ type: 'leave' });
     RTCManager.closeAll();
     SignalingSocket.disconnect();
     Channels.reset();
@@ -149,17 +170,17 @@
     UI.showModeSelect();
   }
 
-  document.getElementById('btn-disconnect').addEventListener('click', doDisconnect);
+  document.getElementById('btn-disconnect')?.addEventListener('click', doDisconnect);
   document.getElementById('btn-disconnect-mob')?.addEventListener('click', doDisconnect);
 
   // ── Mode selection ────────────────────────────────────────────────────────
 
   document.querySelectorAll('.mode-card').forEach(card => {
     card.addEventListener('click', () => {
-      document.querySelectorAll('.mode-card').forEach(c=>c.classList.remove('selected'));
+      document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
       card.classList.add('selected');
       _mode = card.dataset.mode;
-      document.getElementById('create-section').classList.remove('hidden');
+      document.getElementById('create-section')?.classList.remove('hidden');
     });
   });
 
@@ -169,7 +190,7 @@
   ClipboardModule.init();
   CallModule.init();
 
-  // ── Auto-join from QR ────────────────────────────────────────────────────
+  // ── Auto-join from QR scan ────────────────────────────────────────────────
   const urlRoom = QRModule.getRoomFromUrl();
   if (urlRoom) {
     document.getElementById('room-input').value = urlRoom;

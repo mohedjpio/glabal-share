@@ -4,50 +4,64 @@ window.ClipboardModule = (() => {
   function $hist() { return document.getElementById('clipboard-history'); }
   function esc(s)  { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-  // Store items in a WeakMap keyed by element, value is the raw text
-  const _itemText = new Map(); // element → text
+  function _copyToClipboard(text, btn) {
+    const done = () => {
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.disabled = true;
+      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
+    };
+    const fail = () => {
+      /* textarea fallback — works on http */
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0';
+        document.body.appendChild(ta);
+        ta.focus(); ta.select();
+        const ok = document.execCommand('copy');
+        ta.remove();
+        if (ok) done(); else UI.toast('Copy failed — select text manually', 'error');
+      } catch { UI.toast('Copy not available', 'error'); }
+    };
+
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(fail);
+    } else {
+      fail();
+    }
+  }
 
   function addItem(text, dir, time) {
-    const t  = time ? new Date(time) : new Date();
-    const ts = t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    const lbl = dir==='in' ? '↓ Received' : '↑ Sent';
+    const t   = time ? new Date(time) : new Date();
+    const ts  = t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    const lbl = dir === 'in' ? '↓ Received' : '↑ Sent';
 
-    const el  = document.createElement('div');
+    /* Build DOM manually — no innerHTML for the copy button
+       so the event listener is never destroyed                */
+    const el   = document.createElement('div');
     el.className = `clip-item ci-${dir}`;
 
-    // Store text on the element directly — no inline onclick with encoded data
-    el.dataset.clipText = text;
+    const txtDiv  = document.createElement('div');
+    txtDiv.className = 'ci-txt';
+    txtDiv.textContent = text;           // textContent — safe, no XSS
 
-    el.innerHTML =
-      `<div class="ci-txt">${esc(text)}</div>`+
-      `<div class="ci-side">`+
-        `<span class="ci-meta">${lbl} · ${ts}</span>`+
-        `<button class="btn-cpcopy" data-action="copy">Copy</button>`+
-      `</div>`;
+    const sideDiv = document.createElement('div');
+    sideDiv.className = 'ci-side';
 
-    // Wire copy button via event listener — safe, no attribute encoding needed
-    el.querySelector('[data-action="copy"]').addEventListener('click', function() {
-      const rawText = el.dataset.clipText;
-      navigator.clipboard.writeText(rawText)
-        .then(() => {
-          this.textContent = 'Copied!';
-          setTimeout(() => { this.textContent = 'Copy'; }, 1500);
-        })
-        .catch(() => {
-          // Fallback for HTTP contexts
-          try {
-            const ta = document.createElement('textarea');
-            ta.value = rawText;
-            ta.style.cssText = 'position:fixed;opacity:0';
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            ta.remove();
-            this.textContent = 'Copied!';
-            setTimeout(() => { this.textContent = 'Copy'; }, 1500);
-          } catch { UI.toast('Copy failed', 'error'); }
-        });
-    });
+    const meta = document.createElement('span');
+    meta.className = 'ci-meta';
+    meta.textContent = `${lbl} · ${ts}`;
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'btn-cpcopy';
+    copyBtn.textContent = 'Copy';
+    copyBtn.addEventListener('click', () => _copyToClipboard(text, copyBtn));
+
+    sideDiv.appendChild(meta);
+    sideDiv.appendChild(copyBtn);
+    el.appendChild(txtDiv);
+    el.appendChild(sideDiv);
 
     $hist().prepend(el);
   }
@@ -60,23 +74,19 @@ window.ClipboardModule = (() => {
     const payload = { type:'clip', text, time:Date.now() };
     const sent = Channels.broadcastJSON(Channels.LABELS.CLIPBOARD, payload) ||
                  Channels.sendJSON(Channels.LABELS.CLIPBOARD, payload);
-    if (sent) { addItem(text, 'out'); UI.toast('Clipboard sent'); }
+    if (sent) { addItem(text, 'out'); UI.toast('Clipboard sent ✓'); }
   }
 
   async function readAndSend() {
     if (!navigator.clipboard?.readText) {
-      UI.toast('Clipboard API unavailable on HTTP — use the text box', 'error'); return;
+      UI.toast('Clipboard unavailable on HTTP — paste in the box below', 'error'); return;
     }
     try {
       const t = await navigator.clipboard.readText();
       if (!t) { UI.toast('Clipboard is empty'); return; }
       send(t);
     } catch(e) {
-      if (e.name === 'NotAllowedError') {
-        UI.toast('Allow clipboard access in browser settings', 'error');
-      } else {
-        UI.toast('Cannot read clipboard — use the text box', 'error');
-      }
+      UI.toast('Clipboard access denied — paste in the box below', 'error');
     }
   }
 
@@ -96,7 +106,7 @@ window.ClipboardModule = (() => {
 
     document.getElementById('btn-read-clip').addEventListener('click', async () => {
       if (!navigator.clipboard?.readText) {
-        UI.toast('Clipboard API unavailable on HTTP', 'error'); return;
+        UI.toast('Clipboard unavailable on HTTP', 'error'); return;
       }
       try {
         document.getElementById('clip-input').value = await navigator.clipboard.readText();
@@ -105,7 +115,7 @@ window.ClipboardModule = (() => {
 
     document.getElementById('btn-send-clip-text').addEventListener('click', () => {
       const t = document.getElementById('clip-input').value.trim();
-      if (t) { send(t); document.getElementById('clip-input').value=''; }
+      if (t) { send(t); document.getElementById('clip-input').value = ''; }
     });
   }
 
