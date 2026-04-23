@@ -3,18 +3,17 @@
   const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/signal`;
   let _mode      = 'p2p';
   let _myPeerId  = null;
-  let _isInit    = false;   // true = I created the room
+  let _isInit    = false;
   let _connCount = 0;
   let _peerNames = {};
   let _myName    = 'You';
-  let _roomId    = null;    // remember for refresh reconnect
+  let _roomId    = null;
 
   window._getMode     = () => _mode;
   window._getPeerName = (id) => _peerNames[id] || 'Peer';
 
   UI.initTabs();
 
-  // ── Network mode badge ────────────────────────────────────────────────────
   function updateNetMode() {
     UI.setMode(navigator.onLine ? 'Online' : 'LAN', navigator.onLine ? 'green' : 'yellow');
   }
@@ -22,19 +21,16 @@
   window.addEventListener('online',  updateNetMode);
   window.addEventListener('offline', updateNetMode);
 
-  // ── FIX 3: clean disconnect on page unload / refresh ─────────────────────
+  // ── Fix 3: clean leave on refresh / tab close ─────────────────────────────
+  // The WebSocket 'close' event on the server already calls handleLeave(),
+  // so the most reliable approach is to simply close the WS before unload.
+  // sendBeacon fires even when the page is being discarded.
   function _sendLeave() {
-    // Use sendBeacon so it fires even during page close
-    const msg = JSON.stringify({ type: 'leave' });
-    try {
-      // sendBeacon to a dedicated endpoint is most reliable on unload
-      navigator.sendBeacon('/api/leave', msg);
-    } catch (_) {}
-    // Also try the WS (may still be open during soft refresh)
-    SignalingSocket.send({ type: 'leave' });
+    SignalingSocket.send({ type: 'leave' });  // fires if WS still open
+    try { navigator.sendBeacon('/api/leave', '{}'); } catch (_) {}
   }
   window.addEventListener('beforeunload', _sendLeave);
-  window.addEventListener('pagehide',     _sendLeave); // iOS Safari
+  window.addEventListener('pagehide',     _sendLeave); // iOS Safari / bfcache
 
   // ── Signaling ──────────────────────────────────────────────────────────────
 
@@ -43,27 +39,33 @@
     _mode     = msg.mode || 'p2p';
     _roomId   = msg.roomId;
     RTCManager.init(msg.peerId, msg.iceServers, _mode);
-    console.log(`[app] joined room=${msg.roomId} mode=${_mode} existingPeers=${msg.peers?.length}`);
+    console.log(`[app] joined room=${msg.roomId} mode=${_mode} peers=${msg.peers?.length}`);
 
     const existing = msg.peers || [];
 
     if (_mode === 'group') {
-      // ── GROUP MESH FIX ────────────────────────────────────────────────────
-      // Rule: the NEWCOMER (me, just joined) always creates offers to ALL
-      // existing peers. Existing peers do nothing — they wait for my offer.
-      // This is deterministic: one side always offers, no glare.
+      // ── FULL MESH, no glare: ONLY the lower UUID creates the offer ──────────
+      // Rule: for each pair (me, peer), whichever has the lexicographically
+      // LOWER id sends the offer. This guarantees exactly one offer per pair.
+      // Here: I just joined. For each existing peer, if MY id < their id → I offer.
+      // If their id < mine → they will offer me via peer_joined (see below).
       for (const p of existing) {
         _peerNames[p.id] = p.name;
-        await RTCManager.createOffer(p.id);
+        if (_myPeerId < p.id) {
+          console.log(`[app] I have lower ID — offering to existing ${p.id.slice(0,8)}`);
+          await RTCManager.createOffer(p.id);
+        } else {
+          console.log(`[app] existing ${p.id.slice(0,8)} has lower ID — they will offer me`);
+        }
       }
     } else if (_isInit) {
-      // P2P host: offer to the one existing peer (should be none at creation)
+      // P2P host: offer to any existing peer (rare — usually room is empty on create)
       for (const p of existing) {
         _peerNames[p.id] = p.name;
         await RTCManager.createOffer(p.id);
       }
     }
-    // P2P guest: waits for host to offer
+    // P2P guest: waits for host's offer via 'offer' event
   });
 
   SignalingSocket.on('peer_joined', async (msg) => {
@@ -72,14 +74,19 @@
     UI.updatePeerList(_peerNames);
 
     if (_mode === 'group') {
-      // ── GROUP MESH FIX ────────────────────────────────────────────────────
-      // A new peer just joined. THEY will offer to ME (as per the rule above).
-      // I do NOT create an offer — I wait for theirs.
-      // Exception: if somehow I was here first with no peers, I was already waiting.
-      // No action needed — the newcomer's 'joined' handler creates the offer.
-      console.log(`[app] peer_joined ${msg.peerId.slice(0,8)} — waiting for their offer`);
+      // ── FULL MESH: existing peer offers newcomer only if lower UUID ─────────
+      // The newcomer (in their 'joined' handler) already offered us IF they
+      // have lower id than us. We offer them only if WE have lower id.
+      // Exactly one side creates the offer — no glare possible.
+      if (_myPeerId < msg.peerId) {
+        console.log(`[app] I have lower ID — offering newcomer ${msg.peerId.slice(0,8)}`);
+        await RTCManager.createOffer(msg.peerId);
+      } else {
+        console.log(`[app] newcomer ${msg.peerId.slice(0,8)} has lower ID — they offered me`);
+        // newcomer already sent offer in their 'joined' handler (their id < mine)
+      }
     } else if (_isInit) {
-      // P2P: host sends offer to the guest
+      // P2P: host offers to guest
       await RTCManager.createOffer(msg.peerId);
     }
   });
@@ -122,8 +129,8 @@
   RTCManager.on('peer_connected', (peerId) => {
     _connCount++;
     const name = _peerNames[peerId] || 'Peer';
-    console.log(`[app] peer_connected peer=${peerId.slice(0,8)} name=${name} total=${_connCount}`);
-    console.log(`[app] channels:`, Channels.debug());
+    console.log(`[app] CONNECTED peer=${peerId.slice(0,8)} name=${name} total=${_connCount}`);
+    console.log(`[app] open channels:`, Channels.debug());
     UI.updateConnCount(_connCount);
     UI.updatePeerList(_peerNames);
     if (_connCount === 1) {
@@ -229,6 +236,8 @@
   // ── Auto-join from QR ────────────────────────────────────────────────────
   const urlRoom = QRModule.getRoomFromUrl();
   if (urlRoom) {
+    // Skip landing page when coming from a QR scan or shared link
+    UI.showScreen('connect-screen');
     document.getElementById('room-input').value = urlRoom;
     UI.showJoinPanel();
     setTimeout(() => joinRoom(urlRoom), 150);

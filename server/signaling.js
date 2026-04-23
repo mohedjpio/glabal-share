@@ -16,7 +16,7 @@ function handleJoin(ws, msg, state) {
 
   if (error) {
     const room = session.getRoom(roomId);
-    const max  = room && room.mode==='group' ? 8 : 2;
+    const max  = room ? (room.mode==='group' ? 350 : 2) : 2;
     send(ws, { type:'error', code:error, message:`Room is full (max ${max} peers).` });
     return;
   }

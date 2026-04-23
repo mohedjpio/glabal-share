@@ -3,27 +3,156 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
-  <meta name="theme-color" content="#0e1209"/>
+  <meta name="theme-color" content="#080f0f"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <title>SmartShare</title>
+  <title>SmartShare — Instant P2P Sharing</title>
+  <meta name="description" content="Share files, chat, and video call directly between devices. No accounts. No cloud. End-to-end encrypted."/>
   <link rel="manifest" href="/manifest.json"/>
   <link rel="stylesheet" href="/styles/main.css"/>
 </head>
 <body>
 
-<!-- ══════════════════════ CONNECT SCREEN ══════════════════════ -->
-<div id="connect-screen" class="screen active">
-  <div class="cs-wrap">
+<!-- ═══════════════════════════════════════════════════════════
+     LANDING PAGE
+═══════════════════════════════════════════════════════════ -->
+<div id="landing-screen" class="screen active">
 
-    <!-- Brand -->
-    <aside class="cs-brand">
+  <!-- Nav -->
+  <nav class="lp-nav">
+    <div class="lp-nav-brand">
+      <div class="logo-mark"><span>SS</span></div>
+      <span class="brand-name">SmartShare</span>
+    </div>
+    <div class="lp-nav-actions">
       <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
         <svg id="theme-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
         <span id="theme-label">Light</span>
       </button>
+      <button class="lp-nav-cta" id="lp-open-app">Launch App →</button>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="lp-hero">
+    <div class="lp-hero-inner">
+      <div class="lp-badge">✦ 100% Peer-to-Peer · No servers store your data</div>
+      <h1 class="lp-h1">Share anything.<br><span class="lp-gradient">Instantly. Privately.</span></h1>
+      <p class="lp-sub">Send files, chat, and video call directly between devices.<br>No accounts. No cloud. End-to-end encrypted by WebRTC.</p>
+      <div class="lp-hero-btns">
+        <button class="lp-btn-primary" id="lp-start">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13,2 13,9 20,9"/></svg>
+          Start sharing free
+        </button>
+        <button class="lp-btn-ghost" id="lp-join-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          Join a session
+        </button>
+      </div>
+      <div class="lp-trust">
+        <span>🔒 DTLS encrypted</span>
+        <span>⚡ Sub-second latency</span>
+        <span>📱 Any device</span>
+        <span>🌐 Works offline</span>
+      </div>
+    </div>
+
+    <!-- Feature grid -->
+    <div class="lp-features">
+      <div class="lp-feat">
+        <div class="lp-feat-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <h3>File Transfer</h3>
+        <p>Any file, any size. Chunked streaming with backpressure. No upload limits.</p>
+      </div>
+      <div class="lp-feat">
+        <div class="lp-feat-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <h3>Real-time Chat</h3>
+        <p>Instant messaging with typing indicators. Group chat up to 350 members.</p>
+      </div>
+      <div class="lp-feat">
+        <div class="lp-feat-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        </div>
+        <h3>Video &amp; Voice</h3>
+        <p>HD video calls with screen sharing. Minimize and keep chatting.</p>
+      </div>
+      <div class="lp-feat">
+        <div class="lp-feat-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+        </div>
+        <h3>Clipboard Sync</h3>
+        <p>Copy on one device, paste on another. Text syncs instantly across all peers.</p>
+      </div>
+      <div class="lp-feat">
+        <div class="lp-feat-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h3>Zero Storage</h3>
+        <p>Your data never touches our servers. Fully encrypted peer-to-peer WebRTC.</p>
+      </div>
+      <div class="lp-feat">
+        <div class="lp-feat-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <h3>QR Connect</h3>
+        <p>Scan a QR code to instantly join. Works across any network worldwide.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="lp-how">
+    <h2 class="lp-section-title">How it works</h2>
+    <div class="lp-steps">
+      <div class="lp-step">
+        <div class="lp-step-num">1</div>
+        <h4>Create a session</h4>
+        <p>Choose 1-to-1 or Group mode, enter your name, and get an instant QR code or shareable link.</p>
+      </div>
+      <div class="lp-step-arrow">→</div>
+      <div class="lp-step">
+        <div class="lp-step-num">2</div>
+        <h4>Share the link</h4>
+        <p>Send the link or QR code to anyone. They join with a single click — no install, no account.</p>
+      </div>
+      <div class="lp-step-arrow">→</div>
+      <div class="lp-step">
+        <div class="lp-step-num">3</div>
+        <h4>Share directly</h4>
+        <p>A direct encrypted tunnel opens. Chat, send files, call — everything flows peer-to-peer.</p>
+      </div>
+    </div>
+    <div class="lp-cta-bottom">
+      <button class="lp-btn-primary lp-btn-lg" id="lp-start-2">Get started — it's free</button>
+    </div>
+  </section>
+
+  <footer class="lp-footer">
+    <span>SmartShare · Open P2P · Built with WebRTC</span>
+  </footer>
+
+</div><!-- /landing-screen -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     CONNECT SCREEN
+═══════════════════════════════════════════════════════════ -->
+<div id="connect-screen" class="screen">
+  <div class="cs-wrap">
+
+    <!-- Brand sidebar -->
+    <aside class="cs-brand">
+      <button class="theme-toggle" id="theme-toggle-2" aria-label="Toggle theme" style="position:absolute;top:1rem;right:1rem">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <span>Theme</span>
+      </button>
       <div class="brand-inner">
-        <div class="brand-row">
+        <button class="lp-back-btn" id="btn-back-landing">← Back</button>
+        <div class="brand-row" style="margin-top:.5rem">
           <div class="logo-mark"><span>SS</span></div>
           <span class="brand-name">SmartShare</span>
         </div>
@@ -37,7 +166,7 @@
           <div class="feat"><span class="feat-dot">◈</span> Real-time chat</div>
           <div class="feat"><span class="feat-dot">◈</span> File transfer</div>
           <div class="feat"><span class="feat-dot">◈</span> Clipboard sync</div>
-          <div class="feat"><span class="feat-dot">◈</span> QR connect</div>
+          <div class="feat"><span class="feat-dot">◈</span> Video &amp; voice calls</div>
         </div>
       </div>
     </aside>
@@ -50,49 +179,42 @@
           <p>Choose your session type, then create or join</p>
         </div>
 
-        <!-- ── Step 1: Mode selection ── -->
+        <!-- Step 1: Name — always visible -->
+        <div class="name-row">
+          <label class="name-label" for="my-name-input">Your display name</label>
+          <input id="my-name-input" type="text" placeholder="Enter your name…" autocomplete="off" maxlength="32"/>
+        </div>
+
+        <!-- Step 2: Mode selection -->
         <div class="mode-select">
           <p class="mode-label">Session type</p>
           <div class="mode-cards">
-            <!-- P2P -->
             <div class="mode-card" data-mode="p2p">
               <div class="mc-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-                  <circle cx="9" cy="7" r="4"/><circle cx="17" cy="17" r="4"/>
-                  <line x1="9" y1="11" x2="9" y2="13"/><line x1="9" y1="13" x2="17" y2="13"/>
-                </svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="7" r="4"/><circle cx="17" cy="17" r="4"/><line x1="9" y1="11" x2="9" y2="13"/><line x1="9" y1="13" x2="17" y2="13"/></svg>
               </div>
               <div class="mc-txt">
                 <strong>1-to-1</strong>
                 <span>Private P2P — 2 people</span>
               </div>
-              <div class="mc-check">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              </div>
+              <div class="mc-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
             </div>
-            <!-- Group -->
             <div class="mode-card" data-mode="group">
               <div class="mc-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-                  <circle cx="8" cy="7" r="3"/><circle cx="16" cy="7" r="3"/>
-                  <path d="M2 21v-2a5 5 0 0 1 10 0v2"/><path d="M12 21v-2a5 5 0 0 1 10 0v2"/>
-                </svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="7" r="3"/><circle cx="16" cy="7" r="3"/><path d="M2 21v-2a5 5 0 0 1 10 0v2"/><path d="M12 21v-2a5 5 0 0 1 10 0v2"/></svg>
               </div>
               <div class="mc-txt">
                 <strong>Group</strong>
-                <span>Up to 8 people</span>
+                <span>Up to 350 people</span>
               </div>
-              <div class="mc-check">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              </div>
+              <div class="mc-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
             </div>
           </div>
         </div>
 
-        <!-- ── Step 2: Name + Create (hidden until mode chosen) ── -->
+        <!-- Step 3: Create (shown after mode picked) -->
         <div id="create-section" class="hidden">
-          <input id="my-name-input" type="text" placeholder="Your display name (optional)" autocomplete="off" maxlength="32"/>
-          <button id="btn-create" class="btn-create" style="margin-top:.65rem">
+          <button id="btn-create" class="btn-create">
             <span class="bc-icon">+</span>
             <span class="bc-txt">
               <strong>Create session</strong>
@@ -103,7 +225,7 @@
 
         <div class="div-or"><span>or join existing</span></div>
 
-        <!-- ── Join ── -->
+        <!-- Join -->
         <div id="join-panel">
           <div class="join-row">
             <input id="room-input" type="text" placeholder="Paste room URL or ID…" autocomplete="off" spellcheck="false"/>
@@ -111,13 +233,13 @@
           </div>
         </div>
 
-        <!-- QR — shown after Create -->
+        <!-- QR section -->
         <div id="qr-section" class="qr-wrap hidden">
           <div class="qr-box">
             <div id="qr-canvas-wrap"></div>
             <div class="qr-info">
               <p class="qr-title">Scan to connect</p>
-              <p class="qr-note">Share this link with anyone — works from anywhere in the world once deployed online.</p>
+              <p class="qr-note">Share this link — works from anywhere in the world once deployed.</p>
               <div class="qr-urlrow">
                 <span id="room-id-text" class="qr-url"></span>
                 <button id="btn-copy-room" class="btn-copy">
@@ -140,37 +262,29 @@
     </main>
 
   </div>
-</div>
+</div><!-- /connect-screen -->
 
-<!-- ══════════════════════ APP SCREEN ══════════════════════ -->
+
+<!-- ═══════════════════════════════════════════════════════════
+     APP SCREEN
+═══════════════════════════════════════════════════════════ -->
 <div id="app-screen" class="screen">
-  <!-- ══════════════════════════════════════════
-       CALL SCREEN — fullscreen, covers entire app
-  ══════════════════════════════════════════ -->
+
+  <!-- CALL SCREEN — position:fixed fullscreen -->
   <div id="call-screen" class="call-screen hidden">
-
-    <!-- Remote video / screen share (full bg) -->
     <video id="video-remote" class="cs-remote" autoplay playsinline></video>
-
-    <!-- Group video grid -->
     <div id="cs-grid" class="cs-grid hidden"></div>
-
-    <!-- No-video avatar -->
     <div id="cs-avatar" class="cs-avatar hidden">
       <div class="cs-avatar-ring"></div>
       <div class="cs-avatar-icon">
-        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="8" r="5"/><path d="M3 21v-1a9 9 0 0 1 18 0v1"/></svg>
+        <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="8" r="5"/><path d="M3 21v-1a9 9 0 0 1 18 0v1"/></svg>
       </div>
       <p id="cs-avatar-name" class="cs-avatar-name"></p>
     </div>
-
-    <!-- Screen share label -->
     <div id="cs-share-badge" class="cs-share-badge hidden">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-      Screen sharing
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Sharing screen
     </div>
-
-    <!-- Top bar -->
     <div class="cs-topbar" id="cs-topbar">
       <div class="cs-peer-info">
         <span id="cs-peer-name" class="cs-peer-name"></span>
@@ -183,8 +297,6 @@
         </button>
       </div>
     </div>
-
-    <!-- Ring screen -->
     <div id="cs-ring-screen" class="cs-ring-screen hidden">
       <div class="cs-ring-avatar">
         <div class="cs-ring-pulse cs-ring-pulse-1"></div>
@@ -198,40 +310,26 @@
       <p id="cs-ring-status" class="cs-ring-status"></p>
       <div id="cs-ring-actions" class="cs-ring-actions hidden">
         <button id="call-btn-reject" class="cs-action-btn cs-btn-decline">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18.36 6.64A9 9 0 0 1 20.77 15H3.23a9 9 0 0 1 2.41-8.36l-.76-.77A10.43 10.43 0 0 0 2 14a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1 10.43 10.43 0 0 0-2.88-7.13z"/></svg>
+          <div class="ca-circle"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M18.36 6.64A9 9 0 0 1 20.77 15H3.23a9 9 0 0 1 2.41-8.36l-.76-.77A10.43 10.43 0 0 0 2 14a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1 10.43 10.43 0 0 0-2.88-7.13z"/></svg></div>
           <span>Decline</span>
         </button>
         <button id="call-btn-accept" class="cs-action-btn cs-btn-accept">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.36 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.11 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91A16 16 0 0 0 12 16l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 20 17z"/></svg>
+          <div class="ca-circle"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.36 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.11 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91A16 16 0 0 0 12 16l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 20 17z"/></svg></div>
           <span>Accept</span>
         </button>
       </div>
     </div>
-
-    <!-- Local PiP -->
-    <video id="video-local" class="cs-local" autoplay playsinline muted></video>
-
-    <!-- Controls dock -->
+    <video id="video-local" class="cs-local hidden" autoplay playsinline muted></video>
     <div id="cs-controls" class="cs-controls hidden">
-      <button id="call-btn-mute" class="cs-ctrl-btn" data-label="Mute" title="Mute">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-      </button>
-      <button id="call-btn-cam" class="cs-ctrl-btn" data-label="Camera" title="Toggle camera">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-      </button>
-      <button id="call-btn-share" class="cs-ctrl-btn" data-label="Share" title="Share screen">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><polyline points="7 8 12 3 17 8"/><line x1="12" y1="3" x2="12" y2="13"/></svg>
-      </button>
+      <button id="call-btn-mute"  class="cs-ctrl-btn" data-label="Mute"   title="Mute"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
+      <button id="call-btn-cam"   class="cs-ctrl-btn" data-label="Camera" title="Toggle camera"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></button>
+      <button id="call-btn-share" class="cs-ctrl-btn" data-label="Share"  title="Share screen"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></button>
       <div class="cs-ctrl-divider"></div>
-      <button id="call-btn-end" class="cs-ctrl-btn cs-ctrl-end" data-label="End" title="End call">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M18.36 6.64A9 9 0 0 1 20.77 15H3.23a9 9 0 0 1 2.41-8.36l-.76-.77A10.43 10.43 0 0 0 2 14a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1 10.43 10.43 0 0 0-2.88-7.13z"/></svg>
-      </button>
+      <button id="call-btn-end"   class="cs-ctrl-btn cs-ctrl-end" data-label="End" title="End call"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><path d="M18.36 6.64A9 9 0 0 1 20.77 15H3.23a9 9 0 0 1 2.41-8.36l-.76-.77A10.43 10.43 0 0 0 2 14a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1 10.43 10.43 0 0 0-2.88-7.13z"/></svg></button>
     </div>
-
   </div><!-- /call-screen -->
 
   <div class="app-layout">
-
     <!-- Sidebar -->
     <aside class="app-sb">
       <div class="sb-top">
@@ -239,63 +337,34 @@
         <span class="brand-name sm">SmartShare</span>
       </div>
       <nav class="sb-nav">
-        <button class="snav active" data-tab="chat">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat
-        </button>
-        <button class="snav" data-tab="files">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13,2 13,9 20,9"/></svg>Files
-        </button>
-        <button class="snav" data-tab="clipboard">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>Clipboard
-        </button>
+        <button class="snav active" data-tab="chat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat</button>
+        <button class="snav" data-tab="files"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13,2 13,9 20,9"/></svg>Files</button>
+        <button class="snav" data-tab="clipboard"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>Clipboard</button>
       </nav>
-
-      <!-- Peers panel (group mode) -->
       <div class="sb-peers" id="sb-peers-section">
         <p class="sb-peers-title">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20v-1a8 8 0 0 1 16 0v1"/></svg>
           Members
           <span id="conn-count" class="conn-count">0 peers</span>
         </p>
-        <div id="peers-list" class="peers-list">
-          <span class="peer-empty">No other members yet</span>
-        </div>
+        <div id="peers-list" class="peers-list"><span class="peer-empty">No other members yet</span></div>
       </div>
-
       <div class="sb-foot">
-        <div class="conn-st">
-          <span class="dot dot-green pulse"></span>
-          <span id="connected-label">Connected</span>
-        </div>
+        <div class="conn-st"><span class="dot dot-green pulse"></span><span id="connected-label">Connected</span></div>
         <button id="btn-disconnect" class="btn-dc">Disconnect</button>
       </div>
     </aside>
 
-    <!-- Content -->
     <div class="app-body">
-
-      <!-- Mobile topbar -->
       <header class="mob-bar">
-        <div class="mob-l">
-          <span class="dot dot-green pulse"></span>
-          <span id="connected-label-mob">Connected</span>
-          <span id="conn-count-mob" class="conn-count-mob"></span>
-        </div>
+        <div class="mob-l"><span class="dot dot-green pulse"></span><span id="connected-label-mob">Connected</span><span id="conn-count-mob" class="conn-count-mob"></span></div>
         <span class="mob-title">SmartShare</span>
         <button id="btn-disconnect-mob" class="btn-x">✕</button>
       </header>
-
-      <!-- Mobile tabs -->
       <nav class="mob-tabs">
-        <button class="tab active" data-tab="chat">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat
-        </button>
-        <button class="tab" data-tab="files">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13,2 13,9 20,9"/></svg>Files
-        </button>
-        <button class="tab" data-tab="clipboard">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>Clipboard
-        </button>
+        <button class="tab active" data-tab="chat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat</button>
+        <button class="tab" data-tab="files"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13,2 13,9 20,9"/></svg>Files</button>
+        <button class="tab" data-tab="clipboard"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>Clipboard</button>
       </nav>
 
       <!-- Chat -->
@@ -304,9 +373,7 @@
         <div id="typing-indicator" class="typing"></div>
         <div class="chat-bar">
           <input id="chat-input" type="text" placeholder="Message…" autocomplete="off"/>
-          <button id="btn-send" class="btn-send" aria-label="Send">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          </button>
+          <button id="btn-send" class="btn-send" aria-label="Send"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
         </div>
       </section>
 
@@ -316,8 +383,7 @@
           <div id="drop-zone" class="drop-zone" role="button" tabindex="0">
             <div class="dz-body">
               <div class="dz-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
-              <p class="dz-h">Drop files here</p>
-              <p class="dz-s">or</p>
+              <p class="dz-h">Drop files here</p><p class="dz-s">or</p>
               <label class="btn-browse">Browse files<input id="file-input" type="file" multiple hidden/></label>
             </div>
           </div>
@@ -329,14 +395,8 @@
       <section id="tab-clipboard" class="tab-panel hidden">
         <div class="clip-body">
           <div class="clip-acts">
-            <button id="btn-send-clip" class="btn btn-primary">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 2 15 22 11 13 2 9 22 2"/></svg>
-              Send clipboard
-            </button>
-            <button id="btn-read-clip" class="btn btn-secondary">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-              Read
-            </button>
+            <button id="btn-send-clip" class="btn btn-primary"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 2 15 22 11 13 2 9 22 2"/></svg>Send clipboard</button>
+            <button id="btn-read-clip" class="btn btn-secondary"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Read</button>
           </div>
           <div id="clipboard-history" class="clip-hist" aria-live="polite"></div>
           <div class="clip-compose">
@@ -346,30 +406,40 @@
         </div>
       </section>
 
-            <!-- ── Minimal call bar (idle state only) ── -->
+      <!-- Call bar (idle) -->
       <div id="call-bar" class="call-bar">
         <div class="call-info">
-          <div class="call-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.36 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.11 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91A16 16 0 0 0 12 16l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 20 17z"/></svg>
-          </div>
+          <div class="call-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.36 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.11 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91A16 16 0 0 0 12 16l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 20 17z"/></svg></div>
           <span class="call-bar-label">Start a call</span>
         </div>
         <div class="call-controls">
-          <button id="call-btn-audio" class="call-btn call-btn-start" title="Voice call">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.36 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.11 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91A16 16 0 0 0 12 16l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 20 17z"/></svg>
-            <span class="call-btn-label">Voice</span>
-          </button>
-          <button id="call-btn-video" class="call-btn call-btn-vid" title="Video call">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-            <span class="call-btn-label">Video</span>
-          </button>
+          <button id="call-btn-audio" class="call-btn call-btn-start" title="Voice call"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.36 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.11 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91A16 16 0 0 0 12 16l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 20 17z"/></svg><span class="call-btn-label">Voice</span></button>
+          <button id="call-btn-video" class="call-btn call-btn-vid" title="Video call"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg><span class="call-btn-label">Video</span></button>
         </div>
       </div>
-    </div>
-  </div>
-</div>
+
+    </div><!-- /app-body -->
+  </div><!-- /app-layout -->
+</div><!-- /app-screen -->
 
 <div id="toast-container" aria-live="assertive"></div>
+
+<!-- Floating minimized call -->
+<div id="call-pip" class="call-pip hidden">
+  <div class="pip-video-wrap">
+    <video id="pip-video" class="pip-video" autoplay playsinline muted></video>
+    <div id="pip-avatar" class="pip-avatar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="5"/><path d="M3 21v-1a9 9 0 0 1 18 0v1"/></svg></div>
+  </div>
+  <div class="pip-info">
+    <span id="pip-name" class="pip-name"></span>
+    <span id="pip-timer" class="pip-timer">00:00</span>
+  </div>
+  <div class="pip-actions">
+    <button id="pip-mute"   class="pip-btn" title="Mute"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></button>
+    <button id="pip-expand" class="pip-btn pip-btn-expand" title="Return to call"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
+    <button id="pip-end"    class="pip-btn pip-btn-end" title="End call"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.36 6.64A9 9 0 0 1 20.77 15H3.23a9 9 0 0 1 2.41-8.36l-.76-.77A10.43 10.43 0 0 0 2 14a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1 10.43 10.43 0 0 0-2.88-7.13z"/></svg></button>
+  </div>
+</div>
 
 <script src="/src/network/socket.js"></script>
 <script src="/src/webrtc/connection.js"></script>
@@ -381,30 +451,5 @@
 <script src="/src/ui/layout.js"></script>
 <script src="/src/modules/call.js"></script>
 <script src="/src/app.js"></script>
-
-<!-- ── Floating minimized call (PiP) ── -->
-<div id="call-pip" class="call-pip hidden">
-  <div class="pip-video-wrap">
-    <video id="pip-video" class="pip-video" autoplay playsinline muted></video>
-    <div id="pip-avatar" class="pip-avatar">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="5"/><path d="M3 21v-1a9 9 0 0 1 18 0v1"/></svg>
-    </div>
-  </div>
-  <div class="pip-info">
-    <span id="pip-name" class="pip-name"></span>
-    <span id="pip-timer" class="pip-timer">00:00</span>
-  </div>
-  <div class="pip-actions">
-    <button id="pip-mute"   class="pip-btn" title="Mute">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
-    </button>
-    <button id="pip-expand" class="pip-btn pip-btn-expand" title="Return to call">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-    </button>
-    <button id="pip-end"    class="pip-btn pip-btn-end" title="End call">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.36 6.64A9 9 0 0 1 20.77 15H3.23a9 9 0 0 1 2.41-8.36l-.76-.77A10.43 10.43 0 0 0 2 14a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1 10.43 10.43 0 0 0-2.88-7.13z"/></svg>
-    </button>
-  </div>
-</div>
 </body>
 </html>
