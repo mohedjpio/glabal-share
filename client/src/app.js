@@ -21,16 +21,19 @@
   window.addEventListener('online',  updateNetMode);
   window.addEventListener('offline', updateNetMode);
 
-  // ── Fix 3: clean leave on refresh / tab close ─────────────────────────────
-  // The WebSocket 'close' event on the server already calls handleLeave(),
-  // so the most reliable approach is to simply close the WS before unload.
-  // sendBeacon fires even when the page is being discarded.
+  // ── Clean leave ONLY on intentional disconnect, NOT on refresh ───────────
+  // We use sessionStorage to flag when the user explicitly clicked Disconnect.
+  // On refresh/tab-close the flag is absent, so no leave is sent.
+  // The server's WebSocket 'close' event still calls handleLeave() automatically
+  // when the connection drops (refresh, tab close, network loss), so peers are
+  // notified regardless — we just don't want to double-fire or reset the room.
   function _sendLeave() {
-    SignalingSocket.send({ type: 'leave' });  // fires if WS still open
-    try { navigator.sendBeacon('/api/leave', '{}'); } catch (_) {}
+    if (sessionStorage.getItem('ss-intentional-leave') === '1') {
+      SignalingSocket.send({ type: 'leave' });
+      try { navigator.sendBeacon('/api/leave', '{}'); } catch (_) {}
+    }
   }
-  window.addEventListener('beforeunload', _sendLeave);
-  window.addEventListener('pagehide',     _sendLeave); // iOS Safari / bfcache
+  window.addEventListener('pagehide', _sendLeave); // iOS Safari / bfcache
 
   // ── Signaling ──────────────────────────────────────────────────────────────
 
@@ -199,8 +202,8 @@
   // ── Disconnect ────────────────────────────────────────────────────────────
 
   function doDisconnect() {
-    window.removeEventListener('beforeunload', _sendLeave);
-    window.removeEventListener('pagehide',     _sendLeave);
+    // Flag intentional leave so _sendLeave (pagehide) doesn't fire again
+    sessionStorage.setItem('ss-intentional-leave', '1');
     _connCount = 0;
     CallModule.hangup('disconnect');
     SignalingSocket.send({ type: 'leave' });
@@ -209,6 +212,8 @@
     Channels.reset();
     _peerNames = {};
     _roomId    = null;
+    // Clear flag after a tick (navigation within same origin won't reload)
+    setTimeout(() => sessionStorage.removeItem('ss-intentional-leave'), 500);
     UI.showScreen('connect-screen');
     UI.showModeSelect();
   }
