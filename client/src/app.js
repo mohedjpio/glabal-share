@@ -21,19 +21,14 @@
   window.addEventListener('online',  updateNetMode);
   window.addEventListener('offline', updateNetMode);
 
-  // ── Clean leave ONLY on intentional disconnect, NOT on refresh ───────────
-  // We use sessionStorage to flag when the user explicitly clicked Disconnect.
-  // On refresh/tab-close the flag is absent, so no leave is sent.
-  // The server's WebSocket 'close' event still calls handleLeave() automatically
-  // when the connection drops (refresh, tab close, network loss), so peers are
-  // notified regardless — we just don't want to double-fire or reset the room.
-  function _sendLeave() {
-    if (sessionStorage.getItem('ss-intentional-leave') === '1') {
-      SignalingSocket.send({ type: 'leave' });
-      try { navigator.sendBeacon('/api/leave', '{}'); } catch (_) {}
-    }
-  }
-  window.addEventListener('pagehide', _sendLeave); // iOS Safari / bfcache
+  // ── REFRESH FIX: Do NOT send leave on refresh/close ──────────────────────
+  // The server's WebSocket heartbeat (ping/pong every 25s) will detect the
+  // dead connection and call handleLeave() automatically.
+  // We ONLY send 'leave' when the user explicitly clicks Disconnect.
+  // This means peers see a ~25s delay before "X disconnected" after a refresh —
+  // which is the correct trade-off vs wrongly disconnecting on every refresh.
+  //
+  // REMOVED: beforeunload / pagehide listeners that caused the bug.
 
   // ── Signaling ──────────────────────────────────────────────────────────────
 
@@ -47,28 +42,19 @@
     const existing = msg.peers || [];
 
     if (_mode === 'group') {
-      // ── FULL MESH, no glare: ONLY the lower UUID creates the offer ──────────
-      // Rule: for each pair (me, peer), whichever has the lexicographically
-      // LOWER id sends the offer. This guarantees exactly one offer per pair.
-      // Here: I just joined. For each existing peer, if MY id < their id → I offer.
-      // If their id < mine → they will offer me via peer_joined (see below).
       for (const p of existing) {
         _peerNames[p.id] = p.name;
         if (_myPeerId < p.id) {
-          console.log(`[app] I have lower ID — offering to existing ${p.id.slice(0,8)}`);
+          console.log(`[app] offering existing peer ${p.id.slice(0,8)}`);
           await RTCManager.createOffer(p.id);
-        } else {
-          console.log(`[app] existing ${p.id.slice(0,8)} has lower ID — they will offer me`);
         }
       }
     } else if (_isInit) {
-      // P2P host: offer to any existing peer (rare — usually room is empty on create)
       for (const p of existing) {
         _peerNames[p.id] = p.name;
         await RTCManager.createOffer(p.id);
       }
     }
-    // P2P guest: waits for host's offer via 'offer' event
   });
 
   SignalingSocket.on('peer_joined', async (msg) => {
@@ -77,19 +63,11 @@
     UI.updatePeerList(_peerNames);
 
     if (_mode === 'group') {
-      // ── FULL MESH: existing peer offers newcomer only if lower UUID ─────────
-      // The newcomer (in their 'joined' handler) already offered us IF they
-      // have lower id than us. We offer them only if WE have lower id.
-      // Exactly one side creates the offer — no glare possible.
       if (_myPeerId < msg.peerId) {
-        console.log(`[app] I have lower ID — offering newcomer ${msg.peerId.slice(0,8)}`);
+        console.log(`[app] offering newcomer ${msg.peerId.slice(0,8)}`);
         await RTCManager.createOffer(msg.peerId);
-      } else {
-        console.log(`[app] newcomer ${msg.peerId.slice(0,8)} has lower ID — they offered me`);
-        // newcomer already sent offer in their 'joined' handler (their id < mine)
       }
     } else if (_isInit) {
-      // P2P: host offers to guest
       await RTCManager.createOffer(msg.peerId);
     }
   });
@@ -132,13 +110,12 @@
   RTCManager.on('peer_connected', (peerId) => {
     _connCount++;
     const name = _peerNames[peerId] || 'Peer';
-    console.log(`[app] CONNECTED peer=${peerId.slice(0,8)} name=${name} total=${_connCount}`);
-    console.log(`[app] open channels:`, Channels.debug());
+    console.log(`[app] CONNECTED peer=${peerId.slice(0,8)} total=${_connCount}`);
     UI.updateConnCount(_connCount);
     UI.updatePeerList(_peerNames);
     if (_connCount === 1) {
       UI.showScreen('app-screen');
-      UI.toast(_mode === 'group' ? `${name} joined` : 'Connected — secure P2P');
+      UI.toast(_mode === 'group' ? `${name} joined the group` : 'Connected — secure P2P');
       ChatModule.appendSystem(_mode === 'group' ? `${name} joined.` : 'Connected. Start chatting!');
     } else {
       UI.toast(`${name} joined`);
@@ -199,21 +176,17 @@
     if (e.key === 'Enter') joinRoom(document.getElementById('room-input').value);
   });
 
-  // ── Disconnect ────────────────────────────────────────────────────────────
-
+  // ── Disconnect (explicit user action ONLY) ────────────────────────────────
   function doDisconnect() {
-    // Flag intentional leave so _sendLeave (pagehide) doesn't fire again
-    sessionStorage.setItem('ss-intentional-leave', '1');
     _connCount = 0;
     CallModule.hangup('disconnect');
+    // Explicit leave — tell server we're leaving intentionally
     SignalingSocket.send({ type: 'leave' });
     RTCManager.closeAll();
     SignalingSocket.disconnect();
     Channels.reset();
     _peerNames = {};
     _roomId    = null;
-    // Clear flag after a tick (navigation within same origin won't reload)
-    setTimeout(() => sessionStorage.removeItem('ss-intentional-leave'), 500);
     UI.showScreen('connect-screen');
     UI.showModeSelect();
   }
@@ -222,7 +195,6 @@
   document.getElementById('btn-disconnect-mob')?.addEventListener('click', doDisconnect);
 
   // ── Mode selection ────────────────────────────────────────────────────────
-
   document.querySelectorAll('.mode-card').forEach(card => {
     card.addEventListener('click', () => {
       document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
@@ -232,16 +204,29 @@
     });
   });
 
+  // ── Pricing tab toggle ───────────────────────────────────────────────────
+  document.getElementById('tab-monthly')?.addEventListener('click', () => {
+    document.getElementById('tab-monthly')?.classList.add('active');
+    document.getElementById('tab-yearly')?.classList.remove('active');
+    const el = document.getElementById('pro-price');
+    if (el) el.textContent = '9';
+  });
+  document.getElementById('tab-yearly')?.addEventListener('click', () => {
+    document.getElementById('tab-yearly')?.classList.add('active');
+    document.getElementById('tab-monthly')?.classList.remove('active');
+    const el = document.getElementById('pro-price');
+    if (el) el.textContent = '7';
+  });
+
   // ── Init modules ──────────────────────────────────────────────────────────
   ChatModule.init(() => _mode, () => _myName, () => _peerNames);
   FilesModule.init(() => _mode);
   ClipboardModule.init();
   CallModule.init();
 
-  // ── Auto-join from QR ────────────────────────────────────────────────────
+  // ── Auto-join from QR scan ────────────────────────────────────────────────
   const urlRoom = QRModule.getRoomFromUrl();
   if (urlRoom) {
-    // Skip landing page when coming from a QR scan or shared link
     UI.showScreen('connect-screen');
     document.getElementById('room-input').value = urlRoom;
     UI.showJoinPanel();

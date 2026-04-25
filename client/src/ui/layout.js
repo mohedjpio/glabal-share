@@ -69,12 +69,12 @@ window.UI = (() => {
     });
 
     /* Landing → Connect (start / create) */
-    ['lp-start', 'lp-start-2', 'lp-start-3'].forEach(id => {
+    ['lp-start', 'lp-start-2', 'lp-start-3', 'lp-start-4', 'lp-open-app-2'].forEach(id => {
       document.getElementById(id)?.addEventListener('click', () => showScreen('connect-screen'));
     });
 
     /* Landing → Connect (join — focus input) */
-    ['lp-join-link', 'lp-join-link-2'].forEach(id => {
+    ['lp-join-link', 'lp-join-link-2', 'lp-join-link-3'].forEach(id => {
       document.getElementById(id)?.addEventListener('click', () => {
         showScreen('connect-screen');
         setTimeout(() => document.getElementById('room-input')?.focus(), 120);
