@@ -721,7 +721,36 @@
       <section id="tab-chat" class="tab-panel active">
         <div id="chat-messages" class="msgs" aria-live="polite"></div>
         <div id="typing-indicator" class="typing"></div>
+
+        <!-- Reply bar -->
+        <div id="reply-bar" class="reply-bar hidden">
+          <div class="reply-bar-body">
+            <div class="reply-bar-accent"></div>
+            <div class="reply-bar-content">
+              <span class="reply-bar-sender"></span>
+              <span class="reply-bar-text"></span>
+            </div>
+          </div>
+          <button id="reply-bar-close" class="reply-bar-close" aria-label="Cancel reply">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <!-- Voice recording indicator -->
+        <div id="voice-indicator" class="voice-indicator hidden">
+          <span class="vi-dot"></span>
+          <span class="vi-label">Recording</span>
+          <span class="vi-dur">0:00</span>
+          <button id="btn-voice-cancel" class="vi-cancel" title="Cancel">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
         <div class="chat-bar">
+          <!-- Voice note button -->
+          <button id="btn-voice" class="btn-voice" title="Hold to record voice note" aria-label="Voice note">
+            <svg class="voice-mic-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
           <input id="chat-input" type="text" placeholder="Message…" autocomplete="off"/>
           <button id="btn-send" class="btn-send" aria-label="Send">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>

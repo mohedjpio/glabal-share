@@ -21,39 +21,39 @@
   window.addEventListener('online',  updateNetMode);
   window.addEventListener('offline', updateNetMode);
 
-  // ── REFRESH FIX: Do NOT send leave on refresh/close ──────────────────────
-  // The server's WebSocket heartbeat (ping/pong every 25s) will detect the
-  // dead connection and call handleLeave() automatically.
-  // We ONLY send 'leave' when the user explicitly clicks Disconnect.
-  // This means peers see a ~25s delay before "X disconnected" after a refresh —
-  // which is the correct trade-off vs wrongly disconnecting on every refresh.
-  //
-  // REMOVED: beforeunload / pagehide listeners that caused the bug.
-
-  // ── Signaling ──────────────────────────────────────────────────────────────
+  // ── Signaling handlers ─────────────────────────────────────────────────────
 
   SignalingSocket.on('joined', async (msg) => {
     _myPeerId = msg.peerId;
     _mode     = msg.mode || 'p2p';
     _roomId   = msg.roomId;
     RTCManager.init(msg.peerId, msg.iceServers, _mode);
-    console.log(`[app] joined room=${msg.roomId} mode=${_mode} peers=${msg.peers?.length}`);
 
     const existing = msg.peers || [];
+    console.log(`[app] joined room=${msg.roomId} mode=${_mode} existing=${existing.length}`);
 
     if (_mode === 'group') {
+      // FULL MESH: newcomer offers existing peers where newcomer has LOWER uuid
+      // Existing peers offer newcomer (via peer_joined) where they have LOWER uuid
+      // This guarantees exactly 1 offer per pair, no glare
       for (const p of existing) {
         _peerNames[p.id] = p.name;
         if (_myPeerId < p.id) {
-          console.log(`[app] offering existing peer ${p.id.slice(0,8)}`);
+          console.log(`[app] group: I(${_myPeerId.slice(0,6)}) < peer(${p.id.slice(0,6)}) → offering`);
+          await RTCManager.createOffer(p.id);
+        } else {
+          console.log(`[app] group: I(${_myPeerId.slice(0,6)}) > peer(${p.id.slice(0,6)}) → waiting for their offer`);
+        }
+      }
+    } else {
+      // P2P: initiator (creator) offers whoever is already in the room
+      if (_isInit) {
+        for (const p of existing) {
+          _peerNames[p.id] = p.name;
           await RTCManager.createOffer(p.id);
         }
       }
-    } else if (_isInit) {
-      for (const p of existing) {
-        _peerNames[p.id] = p.name;
-        await RTCManager.createOffer(p.id);
-      }
+      // Guest: waits for creator's offer via 'peer_joined' → creator calls createOffer
     }
   });
 
@@ -63,16 +63,22 @@
     UI.updatePeerList(_peerNames);
 
     if (_mode === 'group') {
+      // Same tie-break: if MY uuid is lower → I offer the newcomer
       if (_myPeerId < msg.peerId) {
-        console.log(`[app] offering newcomer ${msg.peerId.slice(0,8)}`);
+        console.log(`[app] group peer_joined: I(${_myPeerId.slice(0,6)}) < new(${msg.peerId.slice(0,6)}) → offering`);
+        await RTCManager.createOffer(msg.peerId);
+      } else {
+        console.log(`[app] group peer_joined: new(${msg.peerId.slice(0,6)}) < I(${_myPeerId.slice(0,6)}) → they will offer me`);
+      }
+    } else {
+      // P2P: only the creator (initiator) sends offers
+      if (_isInit) {
         await RTCManager.createOffer(msg.peerId);
       }
-    } else if (_isInit) {
-      await RTCManager.createOffer(msg.peerId);
     }
   });
 
-  SignalingSocket.on('offer', (msg) => {
+  SignalingSocket.on('offer',         (msg) => {
     _peerNames[msg.from] = _peerNames[msg.from] || 'Peer';
     RTCManager.handleOffer(msg.payload, msg.from);
   });
@@ -96,21 +102,26 @@
     }
   });
 
-  SignalingSocket.on('error', (msg) => UI.toast(msg.message || 'Server error', 'error'));
+  SignalingSocket.on('error', (msg) => {
+    console.error('[app] server error:', msg);
+    UI.toast(msg.message || 'Server error', 'error');
+  });
 
-  // ── WebRTC events ─────────────────────────────────────────────────────────
+  // ── WebRTC events ──────────────────────────────────────────────────────────
 
   RTCManager.on('channel', (ch, fromPeerId) => {
     console.log(`[app] channel label=${ch.label} peer=${fromPeerId.slice(0,8)}`);
     Channels.register(ch, fromPeerId);
   });
 
-  RTCManager.on('track', (event, fromPeerId) => CallModule.onRemoteTrack(event, fromPeerId));
+  RTCManager.on('track',            (event, peerId) => CallModule.onRemoteTrack(event, peerId));
+  RTCManager.on('peer_disconnected', (_pid)          => { /* handled via peer_left */ });
 
   RTCManager.on('peer_connected', (peerId) => {
     _connCount++;
     const name = _peerNames[peerId] || 'Peer';
-    console.log(`[app] CONNECTED peer=${peerId.slice(0,8)} total=${_connCount}`);
+    console.log(`[app] CONNECTED peer=${peerId.slice(0,8)} name=${name} total=${_connCount}`);
+    console.log(`[app] open channels:`, Channels.debug());
     UI.updateConnCount(_connCount);
     UI.updatePeerList(_peerNames);
     if (_connCount === 1) {
@@ -123,21 +134,24 @@
     }
   });
 
-  RTCManager.on('peer_disconnected', (_pid) => { /* handled via peer_left */ });
+  // ── Create room ────────────────────────────────────────────────────────────
 
-  // ── Create room ───────────────────────────────────────────────────────────
-
-  document.getElementById('btn-create').addEventListener('click', async () => {
+  document.getElementById('btn-create')?.addEventListener('click', async () => {
     _isInit    = true;
     _connCount = 0;
     _myName    = document.getElementById('my-name-input')?.value.trim() || 'Host';
 
-    const res = await fetch('/api/room', {
-      method:  'POST',
-      headers: { 'content-type': 'application/json' },
-      body:    JSON.stringify({ mode: _mode }),
-    });
-    const { roomId } = await res.json();
+    let roomId;
+    try {
+      const res = await fetch('/api/room', {
+        method:  'POST',
+        headers: { 'content-type': 'application/json' },
+        body:    JSON.stringify({ mode: _mode }),
+      });
+      ({ roomId } = await res.json());
+    } catch(e) {
+      UI.toast('Failed to create room — check connection', 'error'); return;
+    }
 
     await QRModule.generate(roomId, _mode);
     UI.setPeerStatus(_mode === 'group' ? 'Waiting for members…' : 'Waiting for peer to scan…');
@@ -147,7 +161,7 @@
     });
   });
 
-  // ── Join room ─────────────────────────────────────────────────────────────
+  // ── Join room ──────────────────────────────────────────────────────────────
 
   function joinRoom(rawId) {
     _isInit    = false;
@@ -160,7 +174,7 @@
       const m = u.searchParams.get('mode');
       if (m === 'group' || m === 'p2p') _mode = m;
       roomId = u.searchParams.get('room') || roomId;
-    } catch (_) {}
+    } catch(_) {}
 
     if (!roomId) { UI.toast('Enter a room URL or ID', 'error'); return; }
 
@@ -170,17 +184,18 @@
     });
   }
 
-  document.getElementById('btn-join').addEventListener('click', () =>
+  document.getElementById('btn-join')?.addEventListener('click', () =>
     joinRoom(document.getElementById('room-input').value));
-  document.getElementById('room-input').addEventListener('keydown', e => {
+  document.getElementById('room-input')?.addEventListener('keydown', e => {
     if (e.key === 'Enter') joinRoom(document.getElementById('room-input').value);
   });
 
-  // ── Disconnect (explicit user action ONLY) ────────────────────────────────
+  // ── Disconnect (explicit only) ─────────────────────────────────────────────
+
   function doDisconnect() {
     _connCount = 0;
+    _isInit    = false;
     CallModule.hangup('disconnect');
-    // Explicit leave — tell server we're leaving intentionally
     SignalingSocket.send({ type: 'leave' });
     RTCManager.closeAll();
     SignalingSocket.disconnect();
@@ -194,7 +209,8 @@
   document.getElementById('btn-disconnect')?.addEventListener('click', doDisconnect);
   document.getElementById('btn-disconnect-mob')?.addEventListener('click', doDisconnect);
 
-  // ── Mode selection ────────────────────────────────────────────────────────
+  // ── Mode selection ─────────────────────────────────────────────────────────
+
   document.querySelectorAll('.mode-card').forEach(card => {
     card.addEventListener('click', () => {
       document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
@@ -204,27 +220,25 @@
     });
   });
 
-  // ── Pricing tab toggle ───────────────────────────────────────────────────
+  // ── Pricing toggle ─────────────────────────────────────────────────────────
   document.getElementById('tab-monthly')?.addEventListener('click', () => {
     document.getElementById('tab-monthly')?.classList.add('active');
     document.getElementById('tab-yearly')?.classList.remove('active');
-    const el = document.getElementById('pro-price');
-    if (el) el.textContent = '9';
+    const el = document.getElementById('pro-price'); if (el) el.textContent = '9';
   });
   document.getElementById('tab-yearly')?.addEventListener('click', () => {
     document.getElementById('tab-yearly')?.classList.add('active');
     document.getElementById('tab-monthly')?.classList.remove('active');
-    const el = document.getElementById('pro-price');
-    if (el) el.textContent = '7';
+    const el = document.getElementById('pro-price'); if (el) el.textContent = '7';
   });
 
-  // ── Init modules ──────────────────────────────────────────────────────────
+  // ── Init modules ───────────────────────────────────────────────────────────
   ChatModule.init(() => _mode, () => _myName, () => _peerNames);
   FilesModule.init(() => _mode);
   ClipboardModule.init();
   CallModule.init();
 
-  // ── Auto-join from QR scan ────────────────────────────────────────────────
+  // ── Auto-join from QR ──────────────────────────────────────────────────────
   const urlRoom = QRModule.getRoomFromUrl();
   if (urlRoom) {
     UI.showScreen('connect-screen');
