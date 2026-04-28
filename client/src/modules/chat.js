@@ -12,15 +12,12 @@ window.ChatModule = (() => {
   let _recSecs    = 0;
   let _recording  = false;
 
-<<<<<<< HEAD
   /* ── Context menu state ── */
   let _ctxMenu    = null;   // current context menu DOM element
   let _ctxMsgEl   = null;   // message element the menu is anchored to
   let _longTimer  = null;   // long-press timer handle
   const REACTIONS = ['👍','❤️','😂','😮','😢','🔥','👏','🎉'];
 
-=======
->>>>>>> 2042dd8eedde907fcaf457574228bdd3f0602331
   /* ── helpers ── */
   const $msgs  = () => document.getElementById('chat-messages');
   const $input = () => document.getElementById('chat-input');
@@ -114,7 +111,6 @@ window.ChatModule = (() => {
       });
     });
 
-<<<<<<< HEAD
     // Right-click / long-press context menu
     const _openCtx = (e) => {
       e.preventDefault();
@@ -127,8 +123,6 @@ window.ChatModule = (() => {
     el.addEventListener('touchend',   () => clearTimeout(_lpTimer));
     el.addEventListener('touchmove',  () => clearTimeout(_lpTimer));
 
-=======
->>>>>>> 2042dd8eedde907fcaf457574228bdd3f0602331
     // Wire voice play
     if (audioUrl) {
       el.querySelector('.voice-play-btn')?.addEventListener('click', function() {
@@ -136,7 +130,6 @@ window.ChatModule = (() => {
       });
     }
 
-<<<<<<< HEAD
     // ── Right-click context menu (desktop) ──
     el.addEventListener('contextmenu', e => {
       e.preventDefault();
@@ -155,8 +148,6 @@ window.ChatModule = (() => {
     el.addEventListener('touchmove',   () => clearTimeout(_longTimer));
     el.addEventListener('touchcancel', () => clearTimeout(_longTimer));
 
-=======
->>>>>>> 2042dd8eedde907fcaf457574228bdd3f0602331
     return el;
   }
 
@@ -210,7 +201,6 @@ window.ChatModule = (() => {
   }
 
   /* ════════════════════════════════════════════════════════════
-<<<<<<< HEAD
      CONTEXT MENU  (right-click / long-press)
   ════════════════════════════════════════════════════════════ */
 
@@ -515,8 +505,6 @@ window.ChatModule = (() => {
   }
 
   /* ════════════════════════════════════════════════════════════
-=======
->>>>>>> 2042dd8eedde907fcaf457574228bdd3f0602331
      REPLY BAR
   ════════════════════════════════════════════════════════════ */
   function _setReply(r) {
@@ -605,7 +593,6 @@ window.ChatModule = (() => {
     return `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}`;
   }
 
-<<<<<<< HEAD
   /* Secure context check — same logic as call.js */
   function _isSecure() {
     return location.protocol === 'https:' ||
@@ -649,14 +636,6 @@ window.ChatModule = (() => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation:true, noiseSuppression:true } });
       const mime   = _bestMime();
       const mr     = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
-=======
-  async function _startRecording() {
-    if (_recording) return;
-    if (!navigator.mediaDevices?.getUserMedia) { UI.toast('Mic not supported','error'); return; }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
-      const mr     = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm' });
->>>>>>> 2042dd8eedde907fcaf457574228bdd3f0602331
       _recorder  = mr;
       _recChunks = [];
       _recSecs   = 0;
@@ -761,13 +740,10 @@ window.ChatModule = (() => {
     else if (m.type === 'seen') {
       _markSeen(m.msgId);
     }
-<<<<<<< HEAD
     else if (m.type === 'reaction') {
       const el = _msgs[m.msgId];
       if (el) _addReactionToMsg(el, m.emoji, false);
     }
-=======
->>>>>>> 2042dd8eedde907fcaf457574228bdd3f0602331
   }
 
   /* ════════════════════════════════════════════════════════════
@@ -798,7 +774,6 @@ window.ChatModule = (() => {
       }, 2000);
     });
 
-<<<<<<< HEAD
     // Voice button — press & hold (desktop) or tap & hold (mobile)
     const vBtn = document.getElementById('btn-voice');
     if (vBtn) {
@@ -818,17 +793,6 @@ window.ChatModule = (() => {
       vBtn.addEventListener('touchstart', e => { e.preventDefault(); _startRecording(); }, { passive: false });
       vBtn.addEventListener('touchend',   e => { e.preventDefault(); _stopRecording();  }, { passive: false });
       vBtn.addEventListener('touchcancel',e => { e.preventDefault(); _cancelRecording();}, { passive: false });
-=======
-    // Voice button — press & hold
-    const vBtn = document.getElementById('btn-voice');
-    if (vBtn) {
-      // Touch devices: press & hold
-      vBtn.addEventListener('mousedown',  () => _startRecording());
-      vBtn.addEventListener('mouseup',    () => _stopRecording());
-      vBtn.addEventListener('mouseleave', () => { if (_recording) _stopRecording(); });
-      vBtn.addEventListener('touchstart', e => { e.preventDefault(); _startRecording(); });
-      vBtn.addEventListener('touchend',   e => { e.preventDefault(); _stopRecording(); });
->>>>>>> 2042dd8eedde907fcaf457574228bdd3f0602331
     }
 
     // Cancel recording

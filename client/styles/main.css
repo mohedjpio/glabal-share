@@ -1729,7 +1729,6 @@ body {
 /* ── Message text wrapper ── */
 .msg-text { line-height: 1.5; word-break: break-word; }
 
-<<<<<<< HEAD
 
 /* ── Voice btn HTTPS hint ── */
 .btn-voice[style*="not-allowed"]:hover::after {
@@ -1817,5 +1816,3 @@ body {
   font-size: .72rem; color: var(--tx3); font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-=======
->>>>>>> 2042dd8eedde907fcaf457574228bdd3f0602331
