@@ -91,24 +91,37 @@ window.ChatModule = (() => {
         </span>` : '';
 
     el.innerHTML = `
-      ${senderHTML}
-      ${replyHTML}
-      ${bodyHTML}
-      <div class="msg-meta">
-        <span class="msg-time">${ts}</span>
-        ${ticksHTML}
-      </div>
-      <button class="msg-reply-btn" title="Reply">
+      <button class="msg-reply-btn" title="Reply" aria-label="Reply">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
-      </button>`;
+      </button>
+      <div class="msg-inner">
+        ${senderHTML}
+        ${replyHTML}
+        ${bodyHTML}
+        <div class="msg-meta">
+          <span class="msg-time">${ts}</span>
+          ${ticksHTML}
+        </div>
+      </div>`;
 
     // Wire reply button
-    el.querySelector('.msg-reply-btn').addEventListener('click', () => {
+    el.querySelector('.msg-reply-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
       _setReply({
         id,
         text: text || '🎤 Voice note',
         sender: dir === 'out' ? (_getMyName?.() || 'You') : _senderName(fromPeerId),
       });
+    });
+
+    // Wire reply quote tap — scroll to original message
+    el.querySelector('.msg-reply-quote')?.addEventListener('click', () => {
+      const orig = _msgs[replyTo?.id];
+      if (orig) {
+        orig.scrollIntoView({ behavior:'smooth', block:'center' });
+        orig.classList.add('msg-highlight');
+        setTimeout(() => orig.classList.remove('msg-highlight'), 1200);
+      }
     });
 
     // Right-click / long-press context menu
@@ -446,29 +459,40 @@ window.ChatModule = (() => {
       menu.appendChild(item);
     });
 
-    // Position
-    const msgs = document.getElementById('chat-messages');
+    // Position relative to the bubble (msg-inner), not whole msg row
+    const msgs   = document.getElementById('chat-messages');
+    const bubble = msgEl.querySelector('.msg-inner') || msgEl;
     msgs.appendChild(menu);
 
-    // Position relative to message
-    const rect  = msgEl.getBoundingClientRect();
+    const rect  = bubble.getBoundingClientRect();
     const mRect = msgs.getBoundingClientRect();
-    let top  = rect.bottom - mRect.top + msgs.scrollTop + 4;
-    let left = dir === 'out' ? rect.right - mRect.left - menu.offsetWidth - 8 : rect.left - mRect.left + 8;
+    const menuW = 192;
+    const menuH = 200; // approximate
 
-    // Clamp to bounds
-    const menuW = 180;
-    if (left + menuW > mRect.width) left = mRect.width - menuW - 8;
-    if (left < 4) left = 4;
-    menu.style.top  = top  + 'px';
-    menu.style.left = left + 'px';
+    // Prefer below bubble, but flip up if too close to bottom
+    let top = rect.bottom - mRect.top + msgs.scrollTop + 6;
+    if (rect.bottom + menuH > window.innerHeight) {
+      top = rect.top - mRect.top + msgs.scrollTop - menuH - 6;
+    }
+
+    // Align with bubble horizontally
+    let left = dir === 'out'
+      ? rect.right  - mRect.left - menuW
+      : rect.left   - mRect.left;
+
+    // Clamp within container
+    left = Math.max(4, Math.min(left, mRect.width - menuW - 4));
+    top  = Math.max(4, top);
+
+    menu.style.top      = top  + 'px';
+    menu.style.left     = left + 'px';
     menu.style.minWidth = menuW + 'px';
 
-    // Close on outside click
+    // Close on outside click / tap
     setTimeout(() => {
-      document.addEventListener('click', _removeContextMenu, { once: true });
-      document.addEventListener('touchstart', _removeContextMenu, { once: true });
-    }, 50);
+      document.addEventListener('click',      _removeContextMenu, { once: true });
+      document.addEventListener('touchstart', _removeContextMenu, { once: true, passive: true });
+    }, 60);
   }
 
   /* ── Reactions ── */
