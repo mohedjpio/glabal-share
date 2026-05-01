@@ -93,10 +93,26 @@ window.FilesModule = (() => {
     const total = Math.ceil(file.size / CHUNK) || 1;
     const el    = mkItem(id, file.name, file.size, 'out');
 
-    /* Read entire file once into memory */
+    /* Read entire file once into memory — cross-browser (iOS Safari < 14.5 lacks arrayBuffer) */
     let buf;
-    try { buf = await file.arrayBuffer(); }
-    catch(e) { setStatus(el,'✗ Cannot read file','err'); UI.toast('Cannot read file','error'); return; }
+    try {
+      if (typeof file.arrayBuffer === 'function') {
+        buf = await file.arrayBuffer();
+      } else {
+        // FileReader fallback for older mobile browsers
+        buf = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload  = () => resolve(reader.result);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsArrayBuffer(file);
+        });
+      }
+    } catch(e) {
+      console.error('[files] read error:', e);
+      setStatus(el, '✗ Cannot read file', 'err');
+      UI.toast('Cannot read file: ' + (e?.message || 'unknown error'), 'error');
+      return;
+    }
 
     /* ── Determine which peers to send to ── */
     let peers; // array of peerIds

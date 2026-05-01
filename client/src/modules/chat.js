@@ -617,12 +617,20 @@ window.ChatModule = (() => {
     return `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}`;
   }
 
-  /* Secure context check — same logic as call.js */
+  /* Secure context — voice/mic requires HTTPS or localhost */
   function _isSecure() {
+    // window.isSecureContext is the definitive browser check
+    if (typeof window.isSecureContext === 'boolean') return window.isSecureContext;
+    // Fallback check
     return location.protocol === 'https:' ||
            location.hostname === 'localhost' ||
            location.hostname === '127.0.0.1' ||
            location.hostname.endsWith('.local');
+  }
+
+  /* On mobile, show a tap-to-record UX instead of hold */
+  function _isTouchDevice() {
+    return navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
   }
 
   /* Pick best supported mimeType for MediaRecorder */
@@ -642,7 +650,7 @@ window.ChatModule = (() => {
 
     /* ── Secure context check ── */
     if (!_isSecure()) {
-      UI.toast('Voice notes require HTTPS. Deploy online or use localhost.', 'error');
+      UI.toast('Voice notes need HTTPS. Open via deployed URL (Railway/Render) or use localhost.', 'error');
       return;
     }
 
@@ -798,25 +806,31 @@ window.ChatModule = (() => {
       }, 2000);
     });
 
-    // Voice button — press & hold (desktop) or tap & hold (mobile)
+    // Voice button — desktop: hold to record / mobile: tap to start, tap again to stop
     const vBtn = document.getElementById('btn-voice');
     if (vBtn) {
-      // Show HTTPS hint on button if not in secure context
       if (!_isSecure()) {
-        vBtn.title = 'Voice notes require HTTPS';
+        vBtn.title = 'Voice notes need HTTPS';
         vBtn.style.opacity = '.45';
         vBtn.style.cursor  = 'not-allowed';
       }
 
-      // Desktop: press & hold
-      vBtn.addEventListener('mousedown',  e => { e.preventDefault(); _startRecording(); });
-      vBtn.addEventListener('mouseup',    e => { e.preventDefault(); _stopRecording(); });
-      vBtn.addEventListener('mouseleave', ()  => { if (_recording) _stopRecording(); });
-
-      // Mobile: touch & hold
-      vBtn.addEventListener('touchstart', e => { e.preventDefault(); _startRecording(); }, { passive: false });
-      vBtn.addEventListener('touchend',   e => { e.preventDefault(); _stopRecording();  }, { passive: false });
-      vBtn.addEventListener('touchcancel',e => { e.preventDefault(); _cancelRecording();}, { passive: false });
+      if (_isTouchDevice()) {
+        // ── Mobile: single tap toggles record/stop ──
+        vBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          if (_recording) {
+            _stopRecording();
+          } else {
+            await _startRecording();
+          }
+        });
+      } else {
+        // ── Desktop: hold to record ──
+        vBtn.addEventListener('mousedown',  e => { e.preventDefault(); _startRecording(); });
+        vBtn.addEventListener('mouseup',    e => { e.preventDefault(); _stopRecording(); });
+        vBtn.addEventListener('mouseleave', ()  => { if (_recording) _stopRecording(); });
+      }
     }
 
     // Cancel recording
