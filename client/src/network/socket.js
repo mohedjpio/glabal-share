@@ -7,13 +7,12 @@ window.SignalingSocket = (() => {
   let _url        = null;
   let _onOpen     = null;
   let _stopped    = false;
-  let _joined     = false;   // true once server confirms 'joined' — prevents duplicate joins on reconnect
+  let _joined     = false;
 
   function connect(url, onOpen) {
-    // Close any existing connection first
     if (ws) {
       ws.onclose = null; ws.onerror = null;
-      try { ws.close(); } catch(_) {}
+      try { ws.close(1000, 'reconnect'); } catch(_) {}
       ws = null;
     }
     clearTimeout(reconnTimer);
@@ -28,8 +27,11 @@ window.SignalingSocket = (() => {
   function _open() {
     if (_stopped) return;
     try { ws = new WebSocket(_url); } catch(e) {
-      console.error('[ws] bad URL:', _url, e); return;
+      console.error('[ws] bad URL:', e); return;
     }
+
+    // Mobile: shorter timeout — cellular can be slow to establish
+    ws.binaryType = 'arraybuffer';
 
     ws.onopen = () => {
       console.log('[ws] connected');
@@ -39,7 +41,6 @@ window.SignalingSocket = (() => {
 
     ws.onmessage = (e) => {
       let m; try { m = JSON.parse(e.data); } catch { return; }
-      // Track joined state to prevent double-join on reconnect
       if (m.type === 'joined') _joined = true;
       const fn = handlers[m.type];
       if (fn) fn(m); else console.warn('[ws] unhandled:', m.type);
@@ -47,21 +48,24 @@ window.SignalingSocket = (() => {
 
     ws.onclose = (ev) => {
       if (_stopped) return;
-      console.log('[ws] closed', ev.code, '— retry in', reconnDelay, 'ms');
-      // Only auto-reconnect if we haven't successfully joined yet
-      // Once joined, let the server heartbeat handle dead detection
-      // to avoid ghost peer bug (double-join fills p2p room)
+      console.log('[ws] closed', ev.code, ev.reason);
+      // Don't auto-reconnect after successful join (prevents ghost peer bug)
       if (_joined) {
-        console.log('[ws] already joined — no auto-reconnect (avoid ghost peer)');
+        console.log('[ws] joined — no auto-reconnect');
         return;
       }
-      reconnTimer = setTimeout(() => {
-        reconnDelay = Math.min(reconnDelay * 1.6, 12000);
-        _open();
-      }, reconnDelay);
+      // Retry with backoff for pre-join failures
+      if (ev.code !== 1000) {
+        reconnTimer = setTimeout(() => {
+          reconnDelay = Math.min(reconnDelay * 1.6, 12000);
+          _open();
+        }, reconnDelay);
+      }
     };
 
-    ws.onerror = () => { /* onclose fires after */ };
+    ws.onerror = (e) => {
+      console.warn('[ws] error:', e.message || e);
+    };
   }
 
   function send(payload) {
@@ -77,10 +81,10 @@ window.SignalingSocket = (() => {
     _stopped = true;
     _joined  = false;
     clearTimeout(reconnTimer);
-    if (ws) { ws.onclose = null; ws.onerror = null; ws.close(); ws = null; }
+    if (ws) { ws.onclose = null; ws.onerror = null; ws.close(1000, 'disconnect'); ws = null; }
   }
 
-  function isConnected() { return ws?.readyState === WebSocket.OPEN; }
+  function isConnected() { return !!(ws && ws.readyState === WebSocket.OPEN); }
 
   return { connect, send, on, disconnect, isConnected };
 })();
