@@ -75,8 +75,10 @@ window.ChatModule = (() => {
           <svg class="voice-icon-play" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           <svg class="voice-icon-pause hidden" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
         </button>
-        <div class="voice-waveform">${_makeWave()}</div>
-        <span class="voice-dur">${audioDur || '0:00'}</span>
+        <div class="voice-body">
+          <div class="voice-waveform">${_makeWave()}</div>
+          <span class="voice-dur">${audioDur || '0:00'}</span>
+        </div>
       </div>`;
     } else {
       bodyHTML = `<div class="msg-text">${esc(text)}</div>`;

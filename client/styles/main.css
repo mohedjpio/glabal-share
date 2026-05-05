@@ -1803,30 +1803,90 @@ body {
   50%     { box-shadow: 0 0 0 8px rgba(239,68,68,.0); }
 }
 
-/* ── Voice message bubble ── */
-.msg-voice { display: flex; align-items: center; gap: .7rem; min-width: 175px; max-width: 240px; }
+/* ── Voice message bubble — premium ── */
+.msg-voice {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  min-width: 210px;
+  max-width: 260px;
+  padding: .1rem 0;
+}
+
+/* Play/pause button */
 .voice-play-btn {
-  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
   border: none; cursor: pointer; touch-action: manipulation;
   display: flex; align-items: center; justify-content: center;
-  transition: transform .12s, filter .12s;
+  transition: transform .14s var(--ease), filter .14s, box-shadow .14s;
+  position: relative;
 }
-.msg-out .voice-play-btn { background: rgba(255,255,255,.25); color: #fff; }
-.msg-in  .voice-play-btn { background: rgba(10,186,181,.18); color: var(--cyan3); }
-.voice-play-btn:hover  { filter: brightness(1.18); }
+
+/* Outgoing: white frosted pill */
+.msg-out .voice-play-btn {
+  background: rgba(255,255,255,.22);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.18);
+}
+.msg-out .voice-play-btn:hover {
+  background: rgba(255,255,255,.32);
+  box-shadow: 0 3px 12px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.22);
+}
+
+/* Incoming: teal accent */
+.msg-in .voice-play-btn {
+  background: linear-gradient(135deg, var(--cyan), var(--cyan2));
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(10,186,181,.35), 0 1px 3px rgba(10,186,181,.2);
+}
+.msg-in .voice-play-btn:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 4px 16px rgba(10,186,181,.45);
+}
+
 .voice-play-btn:active { transform: scale(.88); }
+
 .voice-icon-play.hidden  { display: none; }
 .voice-icon-pause.hidden { display: none; }
 
+/* Waveform + duration column */
+.voice-body {
+  display: flex; flex-direction: column; gap: .28rem; flex: 1; min-width: 0;
+}
+
 /* Waveform bars */
-.voice-waveform { display: flex; align-items: center; gap: 2px; flex: 1; height: 24px; }
-.wv-bar { width: 3px; border-radius: 3px; opacity: .6; transition: height .08s ease; }
-.msg-out .wv-bar { background: rgba(255,255,255,.9); }
-.msg-in  .wv-bar { background: var(--cyan); }
-.voice-dur { font-size: .66rem; opacity: .65; white-space: nowrap; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.voice-waveform {
+  display: flex; align-items: center; gap: 2.5px;
+  height: 26px; flex: 1;
+}
+.wv-bar {
+  width: 3px; border-radius: 3px;
+  transition: height .07s ease;
+  flex-shrink: 0;
+}
+.msg-out .wv-bar { background: rgba(255,255,255,.85); opacity: .75; }
+.msg-in  .wv-bar { background: var(--cyan3); opacity: .8; }
+
+/* Duration label */
+.voice-dur {
+  font-size: .67rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .01em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.msg-out .voice-dur { color: rgba(255,255,255,.6); }
+.msg-in  .voice-dur { color: var(--tx3); }
 
 /* ── Message text ── */
 .msg-text { font-size: .875rem; line-height: 1.55; word-break: break-word; }
+
+/* Voice note: make inner bubble slightly wider to breathe */
+.msg-voice ~ .msg-meta,
+.msg-inner:has(.msg-voice) .msg-meta { margin-top: .22rem; }
 
 /* ── HTTPS hint ── */
 .btn-voice[style*="not-allowed"] { opacity: .38; }
