@@ -1939,8 +1939,7 @@ body {
   .mob-tabs { display: none; }
   .lp-features { grid-template-columns: repeat(3, 1fr); }
   .msg { max-width: min(65%, 400px); }
-
-@media(min-width: 1200px) {
+}
   .cs-brand { flex: 0 0 460px; }
   .app-sb   { width: 230px; }
   .lp-features { grid-template-columns: repeat(3, 1fr); }
@@ -2285,90 +2284,297 @@ body {
 }
 
 /* ════════════════════════════════════════════════════════════
-   MOBILE FIXES — phone-to-phone reliability
+   MOBILE — COMPREHENSIVE RESPONSIVE OVERHAUL
 ════════════════════════════════════════════════════════════ */
 
-/* Smooth scroll & momentum on iOS */
-.msgs, .files-body, .clip-body, .sb-nav, .peers-list {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-}
-
-/* Prevent text selection on tap (buttons/bubbles) */
-.msg, .call-btn, .btn-send, .btn-voice,
-.cs-ctrl-btn, .pip-btn, .ctx-react-btn, .ctx-action {
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-/* Remove 300ms tap delay on all interactive elements */
-a, button, input, label, select, textarea,
-.mode-card, .tab, .snav, .msg-reply-btn,
-.voice-play-btn, .btn-cpcopy, .drop-zone {
-  touch-action: manipulation;
-}
-
-/* Fix input zoom on iOS (font-size must be >= 16px to prevent zoom) */
-#chat-input, #room-input, #my-name-input,
-#clip-input, .lp-nl-input {
+/* ── iOS input zoom prevention (font-size >= 16px) ── */
+#chat-input, #room-input, #my-name-input, #clip-input, .lp-nl-input {
   font-size: 16px !important;
 }
-/* But visually keep smaller font via transform trick */
-@media (pointer: coarse) and (max-width: 768px) {
-  #chat-input    { font-size: 16px !important; }
-  #room-input    { font-size: 16px !important; }
-  #my-name-input { font-size: 16px !important; }
-}
 
-/* Safe area insets for notch/home-bar phones */
-.chat-bar {
-  padding-bottom: max(.65rem, env(safe-area-inset-bottom, .65rem)) !important;
-}
-.call-bar {
-  padding-bottom: max(.55rem, env(safe-area-inset-bottom, .55rem)) !important;
-}
-.mob-tabs {
-  padding-bottom: max(0px, env(safe-area-inset-bottom, 0px));
-}
-.cs-controls {
-  bottom: max(1.4rem, calc(env(safe-area-inset-bottom, 0px) + 1rem)) !important;
-}
+/* ── Safe-area insets ── */
+.chat-bar  { padding-bottom: max(.65rem, env(safe-area-inset-bottom, .65rem)) !important; }
+.call-bar  { padding-bottom: max(.55rem, env(safe-area-inset-bottom, .55rem)) !important; }
+.mob-tabs  { padding-bottom: max(0px, env(safe-area-inset-bottom, 0px)); }
+.cs-controls { bottom: max(1.4rem, calc(env(safe-area-inset-bottom, 0px) + 1rem)) !important; }
 
-/* Fix video elements on iOS — must have playsinline and muted for autoplay */
-video {
-  -webkit-playsinline: true;
-  playsinline: true;
-}
+/* ── Overscroll lock ── */
+html, body { overscroll-behavior: none; }
 
-/* Prevent overscroll bounce from shifting layout */
-html, body {
-  overscroll-behavior: none;
-}
-
-/* Chat bar pushes up with keyboard on mobile */
-@supports (height: 100dvh) {
-  .tab-panel { height: 100%; }
-}
-
-/* Touch tap highlight removal */
+/* ── Tap highlight ── */
 * { -webkit-tap-highlight-color: transparent; }
 
-/* Make drop zone work on mobile (touch file input) */
-.drop-zone { cursor: pointer; }
-.btn-browse { min-height: 44px; }
+/* ── Video playsinline ── */
+video { -webkit-playsinline: true; playsinline: true; }
 
-/* Larger touch targets for critical controls */
+/* ── Dynamic viewport height ── */
+@supports (height: 100dvh) { .tab-panel { height: 100%; } }
+
+/* ══════════════════════════════════════════════
+   MOBILE TOP BAR
+══════════════════════════════════════════════ */
+.mob-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: max(.6rem, env(safe-area-inset-top, .6rem)) 1rem .6rem;
+  min-height: 54px;
+  background: var(--bg1);
+  border-bottom: 1px solid var(--bdr1);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+/* Teal accent line at top */
+.mob-bar::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan) 40%, var(--cyan3) 60%, transparent);
+  opacity: .3;
+}
+.mob-l {
+  display: flex; align-items: center; gap: .4rem;
+  font-size: .75rem; color: var(--tx3);
+}
+.mob-title {
+  font-size: 1rem; font-weight: 800; letter-spacing: -.05em;
+  position: absolute; left: 50%; transform: translateX(-50%);
+}
+.conn-count-mob {
+  font-size: .66rem; color: var(--tx4);
+  background: var(--bg3); border: 1px solid var(--bdr1);
+  border-radius: 100px; padding: .1rem .45rem; margin-left: .2rem;
+}
+.btn-x {
+  background: var(--bg3); border: 1px solid var(--bdr1);
+  color: var(--tx3); cursor: pointer;
+  font-size: .8rem; padding: .3rem .5rem; border-radius: var(--r-sm);
+  font-family: var(--font); transition: color .13s, background .13s, border-color .13s;
+  min-width: 34px; min-height: 34px;
+  display: flex; align-items: center; justify-content: center;
+}
+.btn-x:hover { color: var(--red); background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.2); }
+
+/* ══════════════════════════════════════════════
+   MOBILE TAB BAR — bottom-style pill tabs
+══════════════════════════════════════════════ */
+.mob-tabs {
+  display: flex;
+  background: var(--bg1);
+  border-bottom: 1px solid var(--bdr1);
+  flex-shrink: 0;
+  padding: 0 .5rem;
+  gap: .25rem;
+}
+.tab {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  gap: .35rem;
+  padding: .7rem .4rem;
+  background: none; border: none;
+  border-bottom: 2.5px solid transparent;
+  color: var(--tx4); font-size: .78rem; font-weight: 600;
+  letter-spacing: -.01em;
+  cursor: pointer; font-family: var(--font);
+  transition: color .15s, border-color .15s, background .15s;
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
+  position: relative;
+}
+.tab:hover { color: var(--tx2); background: rgba(255,255,255,.03); }
+.tab.active {
+  color: var(--cyan3);
+  border-bottom-color: var(--cyan);
+  background: rgba(10,186,181,.05);
+}
+.tab svg { flex-shrink: 0; }
+
+/* ══════════════════════════════════════════════
+   CHAT HEADER — compact on mobile
+══════════════════════════════════════════════ */
+@media (max-width: 899px) {
+  .chat-header {
+    min-height: 52px;
+    padding: .55rem .85rem;
+    gap: .65rem;
+  }
+  .cha-avatar { width: 34px; height: 34px; font-size: .76rem; }
+  .chat-header-names { font-size: .84rem; }
+  .chat-header-badge { font-size: .63rem; padding: .18rem .52rem; }
+  .chat-header-badge span { display: none; } /* hide text, keep icon on very small */
+}
+@media (max-width: 380px) {
+  .chat-header-badge { display: none; }
+}
+
+/* ══════════════════════════════════════════════
+   CHAT MESSAGES — mobile bubble polish
+══════════════════════════════════════════════ */
+@media (max-width: 899px) {
+  .msgs { padding: .85rem .75rem .5rem; gap: .15rem; }
+  .msg  { max-width: 88%; }
+  .msg-inner { padding: .55rem .82rem .46rem; }
+  .msg-text  { font-size: .855rem; }
+
+  /* Tighten date separator */
+  .msg-date-sep { font-size: .64rem; padding: .17rem .65rem; margin: .65rem 0 .45rem; }
+}
+@media (max-width: 380px) {
+  .msg { max-width: 94%; }
+  .msg-inner { padding: .5rem .72rem .4rem; border-radius: 14px; }
+  .msg-out .msg-inner { border-bottom-right-radius: 3px; }
+  .msg-in  .msg-inner { border-bottom-left-radius: 3px; }
+}
+
+/* ══════════════════════════════════════════════
+   CHAT INPUT BAR — mobile
+══════════════════════════════════════════════ */
+@media (max-width: 899px) {
+  .chat-bar {
+    padding: .5rem .65rem;
+    gap: .4rem;
+    border-top: 1px solid var(--bdr1);
+  }
+  #chat-input {
+    padding: .55rem .9rem !important;
+    border-radius: 20px !important;
+    font-size: 16px !important;
+  }
+  .btn-send, .btn-voice, .btn-theme-chat {
+    width: 40px !important; height: 40px !important;
+  }
+}
+
+/* ══════════════════════════════════════════════
+   EMPTY STATE — mobile
+══════════════════════════════════════════════ */
+@media (max-width: 899px) {
+  .chat-empty { padding: 1.5rem .75rem; }
+  .chat-empty-icon { width: 48px; height: 48px; }
+  .chat-empty-title { font-size: .88rem; }
+  .chat-empty-sub   { font-size: .72rem; }
+}
+
+/* ══════════════════════════════════════════════
+   REPLY BAR — mobile
+══════════════════════════════════════════════ */
+@media (max-width: 899px) {
+  .reply-bar { padding: .42rem .7rem; gap: .55rem; }
+  .reply-bar-sender { font-size: .68rem; }
+  .reply-bar-text   { font-size: .72rem; }
+}
+
+/* ══════════════════════════════════════════════
+   FILES TAB — mobile single column
+══════════════════════════════════════════════ */
+@media (max-width: 899px) {
+  .tx-list { grid-template-columns: 1fr !important; gap: .6rem; }
+  .ti-img  { max-height: 260px !important; object-fit: cover !important; }
+  .ti-img-wrap { max-height: 260px !important; }
+  .files-body { padding: .75rem; }
+
+  /* Drop zone compact on mobile */
+  .dz-body { padding: 1.25rem 1rem; }
+}
+
+/* ══════════════════════════════════════════════
+   CLIPBOARD TAB — mobile
+══════════════════════════════════════════════ */
+@media (max-width: 899px) {
+  .clip-body { padding: .75rem; gap: .55rem; }
+  .clip-acts { gap: .4rem; }
+  .clip-item { padding: .6rem .8rem; }
+}
+
+/* ══════════════════════════════════════════════
+   CONNECT SCREEN — mobile
+══════════════════════════════════════════════ */
+@media (max-width: 899px) {
+  .cs-card {
+    padding: 1.5rem 1.1rem;
+    border-radius: var(--r-xl);
+    margin: 0 .5rem;
+  }
+  .cs-tabs    { gap: .3rem; padding: 3px; }
+  .cs-tab-btn { font-size: .78rem; padding: .45rem .7rem; min-height: 36px; }
+  .cs-section { gap: 1rem; }
+  .cs-field input { font-size: 16px !important; }
+
+  /* Mode cards stacked */
+  .mode-cards-grid { grid-template-columns: 1fr 1fr; gap: .5rem; }
+  .mode-card { padding: .85rem .7rem; min-height: 68px; }
+  .mode-card-title { font-size: .8rem; }
+  .mode-card-desc  { font-size: .68rem; }
+}
+@media (max-width: 380px) {
+  .mode-cards-grid { grid-template-columns: 1fr; }
+  .cs-card { margin: 0; border-radius: var(--r-lg); }
+}
+
+/* ══════════════════════════════════════════════
+   CALL SCREEN — mobile controls
+══════════════════════════════════════════════ */
+@media (max-width: 899px) {
+  .call-bar { padding: .5rem .75rem; gap: .5rem; }
+  .call-btn  { min-height: 40px; min-width: 40px; font-size: .74rem; gap: .3rem; }
+  .cs-ctrl-btn { width: 52px !important; height: 52px !important; }
+  .cs-ctrl-end { width: 60px !important; height: 60px !important; }
+  .cs-action-btn .ca-circle { width: 62px !important; height: 62px !important; }
+}
+
+/* ══════════════════════════════════════════════
+   CONTEXT MENU — full-width sheet on mobile
+══════════════════════════════════════════════ */
+@media (max-width: 899px) {
+  .msg-ctx-menu {
+    min-width: 230px !important;
+    border-radius: 18px !important;
+  }
+  .ctx-react-btn { font-size: 1.5rem !important; padding: .35rem .45rem !important; }
+  .ctx-action { min-height: 52px !important; padding: .8rem 1.1rem !important; font-size: .88rem !important; }
+}
+
+/* ══════════════════════════════════════════════
+   VOICE INDICATOR — mobile
+══════════════════════════════════════════════ */
+@media (max-width: 899px) {
+  .voice-indicator { padding: .42rem .7rem; gap: .5rem; }
+  .vi-label, .vi-dur { font-size: .75rem; }
+}
+
+/* ══════════════════════════════════════════════
+   REACTION PILLS — mobile
+══════════════════════════════════════════════ */
+@media (max-width: 899px) {
+  .msg-reaction { padding: .24rem .65rem; font-size: .84rem; min-height: 30px; }
+  .msg-reactions { gap: .25rem; }
+}
+
+/* ══════════════════════════════════════════════
+   GENERAL TOUCH TARGETS
+══════════════════════════════════════════════ */
 @media (pointer: coarse) {
-  .btn-send    { width: 44px !important; height: 44px !important; }
-  .btn-voice   { width: 44px !important; height: 44px !important; }
+  .btn, .btn-join, .btn-copy { min-height: 44px; }
   .tab         { min-height: 48px !important; }
   .snav        { min-height: 44px !important; }
+  .btn-send    { width: 44px !important; height: 44px !important; }
+  .btn-voice   { width: 44px !important; height: 44px !important; }
+  .btn-theme-chat { width: 40px !important; height: 40px !important; }
   .reply-bar-close { width: 36px !important; height: 36px !important; }
   .vi-cancel   { width: 36px !important; height: 36px !important; }
-  .mode-card   { min-height: 72px; }
-  .cs-ctrl-btn { width: 54px !important; height: 54px !important; }
-  .cs-ctrl-end { width: 62px !important; height: 62px !important; }
-  .cs-action-btn .ca-circle { width: 64px !important; height: 64px !important; }
   .lp-btn-primary { min-height: 48px; }
   .lp-price-btn   { min-height: 48px; }
+  .drop-zone { cursor: pointer; }
+  .btn-browse { min-height: 44px; }
+  /* Larger msg reply btn always visible on touch */
+  .msg-reply-btn { opacity: .3 !important; pointer-events: auto !important; }
+}
+
+/* ══════════════════════════════════════════════
+   SMALL PHONES (< 360px)
+══════════════════════════════════════════════ */
+@media (max-width: 360px) {
+  .mob-title { font-size: .88rem; }
+  .tab { font-size: .72rem; gap: .28rem; }
+  .tab svg { width: 13px; height: 13px; }
+  .chat-header-names { font-size: .78rem; }
+  .cha-avatar { width: 30px; height: 30px; font-size: .7rem; }
+  .msg { max-width: 96%; }
+  .chat-bar { padding: .42rem .5rem; gap: .32rem; }
 }
