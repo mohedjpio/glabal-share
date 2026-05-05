@@ -580,6 +580,8 @@ window.ChatModule = (() => {
       _scrollBottom();
       return;
     }
+    // Hide empty state on first real message
+    document.getElementById('chat-empty')?.classList.add('hidden');
     const id      = extra?.id || genId();
     const isGroup = _getMode?.() === 'group';
     const el = _buildMsg({ id, dir, text, time: time||Date.now(), fromPeerId, replyTo: extra?.replyTo, audioUrl: extra?.audioUrl, audioDur: extra?.audioDur, isGroup });
@@ -754,6 +756,17 @@ window.ChatModule = (() => {
   ════════════════════════════════════════════════════════════ */
   function _onMessage(raw, fromPeerId) {
     let m; try { m = JSON.parse(raw); } catch { return; }
+
+    // Name handshake — update peer name and refresh header
+    if (m.type === 'hello' && m.name) {
+      const names = _getPeerNames?.() || {};
+      if (names[fromPeerId] !== m.name) {
+        names[fromPeerId] = m.name;
+        // Trigger UI update via the global helper
+        window._updatePeerName?.(fromPeerId, m.name);
+      }
+      return;
+    }
 
     if (m.type === 'msg') {
       const id = appendMessage(m.text, 'in', m.time, fromPeerId, { id:m.id, replyTo:m.replyTo });

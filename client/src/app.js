@@ -11,6 +11,15 @@
 
   window._getMode     = () => _mode;
   window._getPeerName = (id) => _peerNames[id] || 'Peer';
+  window._updatePeerName = (id, name) => {
+    _peerNames[id] = name;
+    // Keep me-name fresh before re-render
+    const meInit = document.getElementById('cha-initial-me');
+    const meName = document.getElementById('chn-name-me');
+    if (meInit) meInit.textContent = (_myName[0] || 'Y').toUpperCase();
+    if (meName) meName.textContent = _myName;
+    UI.updatePeerList(_peerNames);
+  };
 
   UI.initTabs();
 
@@ -79,7 +88,7 @@
   });
 
   SignalingSocket.on('offer',         (msg) => {
-    _peerNames[msg.from] = _peerNames[msg.from] || 'Peer';
+    if (!_peerNames[msg.from]) _peerNames[msg.from] = 'Peer';
     RTCManager.handleOffer(msg.payload, msg.from);
   });
   SignalingSocket.on('answer',        (msg) => RTCManager.handleAnswer(msg.payload, msg.from));
@@ -119,9 +128,27 @@
 
   RTCManager.on('peer_connected', (peerId) => {
     _connCount++;
+
+    // Send our name as soon as the chat channel is open (retry up to 3s)
+    const _sendHello = (attempts) => {
+      if (Channels.isOpenTo(peerId, Channels.LABELS.CHAT)) {
+        Channels.sendToJSON(peerId, Channels.LABELS.CHAT, { type: 'hello', name: _myName });
+      } else if (attempts > 0) {
+        setTimeout(() => _sendHello(attempts - 1), 150);
+      }
+    };
+    _sendHello(20); // up to 20 × 150ms = 3s
+
     const name = _peerNames[peerId] || 'Peer';
     console.log(`[app] CONNECTED peer=${peerId.slice(0,8)} name=${name} total=${_connCount}`);
     console.log(`[app] open channels:`, Channels.debug());
+
+    // Always keep "me" name fresh in the header before peer list renders
+    const meInit = document.getElementById('cha-initial-me');
+    const meName = document.getElementById('chn-name-me');
+    if (meInit) meInit.textContent = (_myName[0] || 'Y').toUpperCase();
+    if (meName) meName.textContent = _myName;
+
     UI.updateConnCount(_connCount);
     UI.updatePeerList(_peerNames);
     if (_connCount === 1) {

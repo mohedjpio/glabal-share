@@ -719,7 +719,39 @@
 
       <!-- Chat panel -->
       <section id="tab-chat" class="tab-panel active">
-        <div id="chat-messages" class="msgs" aria-live="polite"></div>
+
+        <!-- Chat header — participants -->
+        <div class="chat-header" id="chat-header">
+          <div class="chat-header-avatars" id="chat-header-avatars">
+            <div class="cha-avatar cha-me" id="cha-avatar-me">
+              <span class="cha-initial" id="cha-initial-me">Y</span>
+            </div>
+          </div>
+          <div class="chat-header-info">
+            <div class="chat-header-names" id="chat-header-names">
+              <span class="chn-me" id="chn-name-me">You</span>
+            </div>
+            <div class="chat-header-status">
+              <span class="dot dot-green pulse"></span>
+              <span id="chat-header-label">Connected</span>
+            </div>
+          </div>
+          <div class="chat-header-badge">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            E2E Encrypted
+          </div>
+        </div>
+
+        <div id="chat-messages" class="msgs" aria-live="polite">
+          <!-- Empty state shown when no messages -->
+          <div class="chat-empty" id="chat-empty">
+            <div class="chat-empty-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <p class="chat-empty-title">Say hello 👋</p>
+            <p class="chat-empty-sub">Your messages are end-to-end encrypted</p>
+          </div>
+        </div>
         <div id="typing-indicator" class="typing"></div>
 
         <!-- Reply bar -->
@@ -747,6 +779,10 @@
         </div>
 
         <div class="chat-bar">
+          <!-- Theme toggle -->
+          <button id="theme-toggle-chat" class="btn-theme-chat" aria-label="Toggle theme" title="Toggle theme">
+            <svg id="theme-icon-chat" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          </button>
           <!-- Voice note button: hold on desktop, tap on mobile -->
           <button id="btn-voice" class="btn-voice" title="Voice note (hold to record)" aria-label="Voice note">
             <svg class="voice-mic-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>

@@ -15,7 +15,7 @@ window.FilesModule = (() => {
          : (b/1048576).toFixed(2)+' MB';
   }
 
-  function mkItem(id, name, size, dir) {
+  function mkItem(id, name, size, dir, file) {
     const el = document.createElement('div');
     el.className = 'transfer-item'; el.id = 'ti-'+id;
     el.innerHTML =
@@ -26,6 +26,26 @@ window.FilesModule = (() => {
       `<div class="ti-meta">${fmt(size)}</div>`+
       `<div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>`+
       `<div class="ti-pct">0%</div>`;
+
+    // Outgoing image preview
+    if (dir === 'out' && file && file.type?.startsWith('image/')) {
+      const wrap = document.createElement('div');
+      wrap.className = 'ti-img-wrap';
+      const img = document.createElement('img');
+      img.className = 'ti-img';
+      img.alt = name;
+      const reader = new FileReader();
+      reader.onload = e => {
+        img.src = e.target.result;
+        img.onload = () => wrap.classList.add('loaded');
+        img.addEventListener('click', () => _openLightbox(e.target.result, name));
+      };
+      reader.readAsDataURL(file);
+      wrap.appendChild(img);
+      el.insertBefore(wrap, el.querySelector('.ti-meta').nextSibling);
+      el.classList.add('ti-has-image');
+    }
+
     $l().prepend(el);
     return el;
   }
@@ -48,7 +68,60 @@ window.FilesModule = (() => {
     el.querySelector('.ti-badge').textContent = '✓ Received';
     el.querySelector('.ti-badge').className   = 'ti-badge done';
     el.querySelector('.ti-pct').textContent   = '✓ Complete';
+
+    // ── Image preview ──
+    const isImage = blob.type.startsWith('image/');
+    if (isImage) {
+      const wrap = document.createElement('div');
+      wrap.className = 'ti-img-wrap';
+      const img = document.createElement('img');
+      img.src = url;
+      img.className = 'ti-img';
+      img.alt = name;
+      img.onload = () => wrap.classList.add('loaded');
+      // Click → lightbox
+      img.addEventListener('click', () => _openLightbox(url, name));
+      wrap.appendChild(img);
+      // Insert before the save button area
+      el.insertBefore(wrap, el.querySelector('.ti-pct'));
+      el.classList.add('ti-has-image');
+    }
+
     el.appendChild(a);
+  }
+
+  /* ── Lightbox ── */
+  function _openLightbox(url, name) {
+    let lb = document.getElementById('ti-lightbox');
+    if (!lb) {
+      lb = document.createElement('div');
+      lb.id = 'ti-lightbox';
+      lb.innerHTML = `
+        <div class="ti-lb-backdrop"></div>
+        <div class="ti-lb-inner">
+          <img class="ti-lb-img" />
+          <div class="ti-lb-bar">
+            <span class="ti-lb-name"></span>
+            <a class="ti-lb-dl ti-save" download>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Save
+            </a>
+            <button class="ti-lb-close">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>`;
+      document.body.appendChild(lb);
+      const close = () => { lb.classList.remove('open'); setTimeout(() => lb.classList.remove('visible'), 300); };
+      lb.querySelector('.ti-lb-backdrop').addEventListener('click', close);
+      lb.querySelector('.ti-lb-close').addEventListener('click', close);
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+    }
+    lb.querySelector('.ti-lb-img').src = url;
+    lb.querySelector('.ti-lb-name').textContent = name;
+    lb.querySelector('.ti-lb-dl').href = url;
+    lb.querySelector('.ti-lb-dl').download = name;
+    lb.classList.add('visible');
+    requestAnimationFrame(() => lb.classList.add('open'));
   }
 
   /* ── Send one file to one peer via its DataChannel (event-driven backpressure) ── */
@@ -91,7 +164,7 @@ window.FilesModule = (() => {
 
     const id    = Date.now().toString(36) + Math.random().toString(36).slice(2,8);
     const total = Math.ceil(file.size / CHUNK) || 1;
-    const el    = mkItem(id, file.name, file.size, 'out');
+    const el    = mkItem(id, file.name, file.size, 'out', file);
 
     /* Read entire file once into memory — cross-browser (iOS Safari < 14.5 lacks arrayBuffer) */
     let buf;

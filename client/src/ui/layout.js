@@ -125,6 +125,49 @@ window.UI = (() => {
         `<div class="peer-pill"><span class="dot dot-green"></span>${n}</div>`
       ).join('');
     }
+
+    // ── Update chat header ──
+    const namesEl    = document.getElementById('chat-header-names');
+    const avatarsEl  = document.getElementById('chat-header-avatars');
+    const labelEl    = document.getElementById('chat-header-label');
+    const meInitEl   = document.getElementById('cha-initial-me');
+    const meNameEl   = document.getElementById('chn-name-me');
+
+    if (namesEl && avatarsEl) {
+      // Remove old peer avatars (keep only the "me" avatar)
+      avatarsEl.querySelectorAll('.cha-peer').forEach(a => a.remove());
+
+      // Read current "me" name before wiping innerHTML (innerHTML destroys node refs)
+      const meText = namesEl.querySelector('.chn-me')?.textContent || '';
+
+      // Rebuild from scratch
+      namesEl.innerHTML = '';
+
+      // Re-create me span with preserved text
+      const meSpan = document.createElement('span');
+      meSpan.className = 'chn-me';
+      meSpan.id = 'chn-name-me';
+      meSpan.textContent = meText;
+      namesEl.appendChild(meSpan);
+
+      names.forEach((name, i) => {
+        // Avatar bubble
+        const av = document.createElement('div');
+        av.className = 'cha-avatar cha-peer';
+        av.style.setProperty('--av-index', i + 1);
+        av.innerHTML = `<span class="cha-initial">${(name[0] || '?').toUpperCase()}</span>`;
+        avatarsEl.appendChild(av);
+
+        // Separator + name label
+        namesEl.appendChild(document.createTextNode(i === 0 ? ' & ' : ', '));
+        const span = document.createElement('span');
+        span.className = 'chn-peer';
+        span.textContent = name;
+        namesEl.appendChild(span);
+      });
+
+      if (labelEl) labelEl.textContent = names.length > 0 ? 'Connected' : 'Waiting…';
+    }
   }
 
   function updateConnCount(n) {
