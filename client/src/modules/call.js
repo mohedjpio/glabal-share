@@ -322,18 +322,62 @@ window.CallModule = (() => {
 
     if (_sharing) {
       /* Stop sharing */
-      _screen?.getTracks().forEach(t=>t.stop());
-      _screen = null; _sharing = false;
-      /* Restore cam track to all PCs */
-      _addLocal();
-      await _renegotiate();
-      const btn=$('call-btn-share');
-      if (btn){ btn.classList.remove('sharing'); btn.dataset.label='Share'; }
+      const screenTrack = _screen?.getVideoTracks()[0] || null;
+      _screen?.getTracks().forEach(t => t.stop());
+      _screen = null;
+      _sharing = false;
+
+      /* Restore cam/mic track to all PCs via replaceTrack (no renegotiation needed) */
+      const camTrack = _local?.getVideoTracks()[0] || null;
+      const peers = RTCManager.connectedPeers();
+      let replaced = false;
+      for (const pid of peers) {
+        const pc = RTCManager._pcs[pid];
+        if (!pc) continue;
+        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+        if (sender && camTrack) {
+          sender.replaceTrack(camTrack).catch(() => {});
+          replaced = true;
+        } else if (sender && !camTrack) {
+          /* audio-only call — remove the screen video sender */
+          try { pc.removeTrack(sender); } catch (_) {}
+          replaced = true;
+        }
+      }
+      /* If replaceTrack didn't cover it, fall back to full renegotiate */
+      if (!replaced) { _addLocal(); await _renegotiate(); }
+
+      /* Restore local preview to camera */
+      const lv = $('video-local');
+      if (lv) {
+        if (_type === 'video' && _local) {
+          lv.srcObject = _local;
+          lv.classList.remove('hidden');
+          lv.play().catch(() => {});
+        } else {
+          lv.srcObject = null;
+          lv.classList.add('hidden');
+        }
+      }
+
+      /* Re-attach remote video in case the stream stalled */
+      const rv = $('video-remote');
+      if (rv && _type === 'video') {
+        const remotePeerId = _callee || _caller;
+        if (remotePeerId && _remotes[remotePeerId]) {
+          rv.srcObject = _remotes[remotePeerId];
+          rv.style.display = 'block';
+          rv.play().catch(() => {});
+          $('cs-avatar')?.classList.add('hidden');
+        }
+        rv.style.objectFit = 'contain';
+      }
+
+      const btn = $('call-btn-share');
+      if (btn) { btn.classList.remove('sharing'); btn.dataset.label = 'Share'; }
       $('cs-share-badge')?.classList.add('hidden');
-      /* Restore remote video view */
-      const rv=$('video-remote');
-      if (rv) rv.style.objectFit='contain';
-      const st=$('cs-call-status'); if(st) st.textContent=_type==='video'?'Video call':'Voice call';
+      const st = $('cs-call-status');
+      if (st) st.textContent = _type === 'video' ? 'Video call' : 'Voice call';
       UI.toast('Screen share stopped');
       return;
     }
@@ -373,8 +417,10 @@ window.CallModule = (() => {
       $('cs-share-badge')?.classList.remove('hidden');
       const st=$('cs-call-status'); if(st) st.textContent='Sharing screen';
 
-      /* Auto-stop when user clicks browser stop button */
-      videoTrack.onended = () => { if(_sharing) toggleShare(); };
+      /* Auto-stop when user clicks browser's native stop button */
+      videoTrack.onended = () => {
+        if (_sharing) toggleShare();
+      };
 
       UI.toast('Screen sharing started');
 
