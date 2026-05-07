@@ -212,15 +212,27 @@ window.CallModule = (() => {
       } else {
         const rv = $('video-remote');
         if (rv) {
-          if (!rv.srcObject) rv.srcObject = new MediaStream();
-          rv.srcObject.addTrack(track);
+          /* Replace entire srcObject so stale tracks don't linger */
+          rv.srcObject = _remotes[fromPeerId];
           rv.style.display = 'block';
+          rv.style.objectFit = 'contain'; /* always show full frame */
           $('cs-avatar')?.classList.add('hidden');
-          rv.play().catch(()=>{});
+          rv.play().catch(() => {});
         }
       }
     }
-    track.onended = () => _remotes[fromPeerId]?.removeTrack(track);
+    track.onended = () => {
+      _remotes[fromPeerId]?.removeTrack(track);
+      /* If the ended track was video, re-check display */
+      if (track.kind === 'video' && mode !== 'group') {
+        const rv = $('video-remote');
+        const remaining = _remotes[fromPeerId]?.getVideoTracks() || [];
+        if (remaining.length === 0 && rv) {
+          rv.style.display = 'none';
+          $('cs-avatar')?.classList.remove('hidden');
+        }
+      }
+    };
   }
 
   function _showLocal() {
@@ -376,6 +388,7 @@ window.CallModule = (() => {
       const btn = $('call-btn-share');
       if (btn) { btn.classList.remove('sharing'); btn.dataset.label = 'Share'; }
       $('cs-share-badge')?.classList.add('hidden');
+      $('call-screen')?.classList.remove('screen-sharing');
       const st = $('cs-call-status');
       if (st) st.textContent = _type === 'video' ? 'Video call' : 'Voice call';
       UI.toast('Screen share stopped');
@@ -408,9 +421,10 @@ window.CallModule = (() => {
       const lv=$('video-local');
       if (lv){ lv.srcObject=stream; lv.classList.remove('hidden'); }
 
-      /* Style changes */
+      /* Style changes — contain so full screen is visible */
       const rv=$('video-remote');
       if (rv) rv.style.objectFit='contain';
+      $('call-screen')?.classList.add('screen-sharing');
 
       const btn=$('call-btn-share');
       if (btn){ btn.classList.add('sharing'); btn.dataset.label='Stop'; }
